@@ -10,15 +10,16 @@ data → baseline → fine-tune → compare → share.
 - **Data:** downloaded → extracted → **manifested**. Working set = **903 songs / 6,670 tracks**.
   Full status: `docs/dataset_status.md`.
 - **Env:** `uv` project, Python 3.11. PyTorch not installed yet (added at modeling).
-- **Now:** EDA Phase 2 (master ≈ Σ(stems) residual test). No experiments run yet.
+- **Now:** EDA Phase 2 mostly done (residual, stem QC, 96 kHz confirmed). Remaining:
+  판소리 length-align + per-genre/instrument stats → deliverable, then modeling baselines. No experiments run yet.
 
 ## Roadmap (tick off)
 **EDA**
 - [x] Phase 0 — Repo scaffold + uv env
 - [x] Phase 1 — Manifest: own stratified split + header-level audio props
-- [ ] Phase 2 — Audio-content EDA: master ≈ Σ(stems) residual (all genres incl. 판소리);
-      silence/clipping/loudness; per-genre & per-instrument stats; confirm 96 kHz resample
-      + 판소리 length-align plan
+- [~] Phase 2 — Audio-content EDA: [x] master ≈ Σ(stems) residual (master ≠ sum: mastered/nonlinear,
+      genre-dependent → train on Σstems, master=secondary eval); [x] silence/clipping/loudness (clean,
+      sample only, no full scan); [x] confirm 96 kHz resample; [ ] 판소리 length-align; [ ] per-genre/instrument stats
 - [ ] Phase 3 — Finalize 24→4 stem mapping; decide 판소리 handling; freeze → EDA done
 - [ ] Phase 4 — Produce deliverables (graphs, charts, tables with numbers) for the instructor meeting.
 
@@ -52,10 +53,19 @@ data → baseline → fine-tune → compare → share.
 ### Key facts & gotchas
 - **No vocal/소리 stem** anywhere (incl. 판소리 — its masters also appear voiceless) → **4-stem scheme,
   no 5th voice stem.**
-- **master ≈ Σ(stems)?** Build training mixtures by **summing stems** — but this linear-mixing
-  assumption is **not yet verified**; run the residual test (all genres) first. Master = real-world test reference only.
-- **판소리:** 28 songs have master slightly longer than stems (~0.05–0.5 s) → align/trim before summing.
-- **Multi-instrument stems** exist (피리1/피리2/피리3…) → strip trailing digit to get the base instrument.
+- **master ≠ Σ(stems) (verified, Phase 2).** Build training mixtures by **summing stems**
+  (mix:=Σstems, targets:=stems — self-consistent). The real master is NOT the sum: mastered
+  (per-stem faders + reverb/FX), genre-dependent (민요 ≈ clean sum, 창작국악 heavily processed).
+  → master = **secondary real-world eval only**; do NOT invert master→stems.
+- **Stem QC (Phase 2 sample) = clean:** 0 dead stems, clipping negligible (drop the check),
+  loudness ~−19 LUFS. **Sparse ≠ dead** — do NOT auto-drop low-activity stems (박 etc. play
+  rarely by design). Normalize the mixture, never per-stem. No full scan needed.
+- **판소리 length-align (verified, Phase 2):** stems are start-aligned; in 28 판소리 songs one stem
+  (almost always **가야금**) runs *longer* than the master (usually <0.5 s, one 11 s tail) with real
+  (non-silent) content the master lacks. Rule: **trim every stem to the shortest per song before
+  summing** (don't pad — padding injects content the master never had). 판소리-only.
+- **Multi-instrument stems** exist (피리1/피리2/피리3…) → strip trailing digit to base, **sum same-base
+  into one source**. (향/세/당피리 subtype ambiguity — experts pending — affects exp2 only, not 4-stem.)
 - **Korean filenames need NFC** normalization for any name join. **Master naming translation:**
   on disk `<song>_master.wav` vs metadata records `<song>.wav`.
 

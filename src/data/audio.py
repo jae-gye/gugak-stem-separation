@@ -71,6 +71,45 @@ def loudest_window(prefix: np.ndarray, win: int, hop: int) -> int:
     return int(starts[int(energies.argmax())])
 
 
+# --- quality-control metrics (silence / clipping) --------------------------
+
+def block_rms_db(mono: np.ndarray, sr: int, block_s: float = 0.1) -> np.ndarray:
+    """Per-block RMS in dBFS over non-overlapping ``block_s`` windows (silence floor -inf→-240)."""
+    bs = max(1, int(block_s * sr))
+    nb = len(mono) // bs
+    if nb == 0:
+        return np.array([])
+    blk = np.asarray(mono[:nb * bs], dtype=np.float64).reshape(nb, bs)
+    r = np.sqrt((blk * blk).mean(axis=1))
+    return 20.0 * np.log10(np.maximum(r, 1e-12))
+
+
+def active_fraction(mono: np.ndarray, sr: int, floor_db: float = -60.0, block_s: float = 0.1) -> float:
+    """Fraction of blocks whose RMS exceeds ``floor_db`` — 0.0 for a dead stem, 1.0 for always-on."""
+    db = block_rms_db(mono, sr, block_s)
+    return float((db > floor_db).mean()) if db.size else 0.0
+
+
+def edge_silence(mono: np.ndarray, sr: int, floor_db: float = -60.0, block_s: float = 0.1):
+    """(leading, trailing) silence in seconds before first / after last active block."""
+    db = block_rms_db(mono, sr, block_s)
+    active = np.where(db > floor_db)[0]
+    if active.size == 0:
+        return len(mono) / sr, 0.0
+    return float(active[0] * block_s), float((len(db) - 1 - active[-1]) * block_s)
+
+
+def clipping_fraction(x: np.ndarray, thresh: float = 0.9995):
+    """(fraction of |samples| >= thresh, longest consecutive clipped run in samples)."""
+    over = np.abs(np.asarray(x)).max(axis=1) >= thresh if x.ndim > 1 else np.abs(np.asarray(x)) >= thresh
+    if not over.any():
+        return 0.0, 0
+    # longest run of True
+    idx = np.flatnonzero(np.diff(np.concatenate(([0], over.view(np.int8), [0]))))
+    runs = idx[1::2] - idx[::2]
+    return float(over.mean()), int(runs.max())
+
+
 # --- mixing / residual analysis (master ≈ Σ(stems)) -------------------------
 
 def estimate_lag(ref: np.ndarray, est: np.ndarray, sr: int,

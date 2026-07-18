@@ -12,6 +12,7 @@ dependencies = [
     "tqdm",
     "matplotlib",
     "ipykernel",
+    "pyloudnorm>=0.2.0",
 ]
 
 # Application project (no build-system) -> uv manages the env, does not build the root as a package.
@@ -20,5 +21,6 @@ package = false
 
 [dependency-groups]
 dev = [
+    "koreanize-matplotlib>=0.1.1",
     "nbstripout>=0.9.1",
 ]
