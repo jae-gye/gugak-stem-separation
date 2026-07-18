@@ -15,6 +15,10 @@ checkpoints/
 outputs/
 *.log
 
+# --- notebooks: source tracked (outputs auto-stripped by nbstripout); ignore
+#     generated images so binaries stay out of a public repo ---
+notebooks/*.png
+
 # --- OS / editor ---
 .DS_Store
 
