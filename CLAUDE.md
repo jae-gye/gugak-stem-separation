@@ -112,6 +112,11 @@ external/    ZFTurbo MSST repo (submodule/vendored)
 - Lab share-outs go in wandb Reports.
 
 ## Guardrails for Claude Code
+- **Work granularly (personal preference — IMPORTANT).** One task/step per turn, then STOP and
+  check in before the next. Prefer many small decisions the user makes over batching work
+  autonomously. This project is **as much about the user's education as productivity** — explain
+  the *why*, surface choices, ask questions, and let the user steer. Do NOT chain multiple tasks
+  in a single turn, even if they seem related.
 - Confirm the current experiment's config before running training.
 - Don't hardcode paths, bypass the manifest, or edit `uv.lock` by hand.
 - Prefer editing configs over editing code for experiment variation.
