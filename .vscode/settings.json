@@ -1,0 +1,14 @@
+{
+  // The `data/` symlink points at the ~345GB dataset in /storage.
+  // Exclude it from the file watcher / search / Pylance so VSCode doesn't
+  // try to index thousands of WAVs. Browsing it in the Explorer still works.
+  "files.watcherExclude": {
+    "**/data/**": true
+  },
+  "search.exclude": {
+    "**/data/**": true
+  },
+  "python.analysis.exclude": [
+    "**/data/**"
+  ]
+}

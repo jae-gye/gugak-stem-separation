@@ -1,0 +1,22 @@
+# --- Python / uv ---
+.venv/
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# --- data (root symlink to /storage dataset; never track the audio) ---
+# anchored to repo root with a leading slash so it does NOT also match src/data/,
+# and no trailing slash so it matches the symlink (git treats a symlink as a file).
+/data
+
+# --- experiment outputs ---
+wandb/
+checkpoints/
+outputs/
+*.log
+
+# --- OS / editor ---
+.DS_Store
+
+# NOTE: uv.lock IS committed (reproducible env) — do not ignore it.
+# NOTE: manifests/*.parquet ARE committed (frozen splits) — do not ignore them.

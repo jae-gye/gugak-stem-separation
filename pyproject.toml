@@ -1,0 +1,19 @@
+[project]
+name = "gugak-stem-separation"
+version = "0.1.0"
+description = "Stem separation on a traditional Korean music (gugak) multitrack dataset (AI Hub 71955)."
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "numpy",
+    "pandas",
+    "pyarrow",
+    "soundfile",
+    "tqdm",
+    "matplotlib",
+    "ipykernel",
+]
+
+# Application project (no build-system) -> uv manages the env, does not build the root as a package.
+[tool.uv]
+package = false
