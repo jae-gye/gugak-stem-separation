@@ -1,0 +1,3 @@
+[submodule "external/msst"]
+	path = external/msst
+	url = git@github.com:jae-gye/Music-Source-Separation-Training.git
