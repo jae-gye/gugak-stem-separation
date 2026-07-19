@@ -12,7 +12,7 @@ data → baseline → fine-tune → compare → share.
 - **Env:** `uv` project, Python 3.11. PyTorch not installed yet (added at modeling step 0.1).
 - **Now:** EDA **done & frozen** (Phases 0–3; Phase 4 deliverable assembly remains). Meeting figures
   ready: `notebooks/fig_master_vs_sum.png`, `fig_dataset_overview.png`. **Modeling: 0.1–0.2 done
-  (torch 2.11.0+cu128; MSST submodule at `external/msst`). Next: 0.2b MSST deps.** No experiments run yet.
+  (torch 2.11.0+cu128; MSST submodule; inference deps in). Next: 0.3 pick pinned listening set.** No experiments run yet.
 - **GPU (confirmed 2026-07-19):** 3× RTX PRO 6000 Blackwell Server Edition, 96 GB each, driver
   590.48 (CUDA 13.1). Blackwell = sm_120 → PyTorch **cu128** build (pinned in `pyproject.toml`).
 
@@ -29,20 +29,24 @@ data → baseline → fine-tune → compare → share.
       (local, gitignored); assemble/polish for the instructor meeting
 
 **Modeling**
-- [ ] (0) Zero-shot pretrained baselines (HTDemucs + BS-RoFormer) → wandb.
+- [ ] (0) Zero-shot pretrained baselines → wandb. **Models: single `htdemucs` + viperx
+      `bs_roformer`, both via MSST** (NOT htdemucs_ft — its Western fine-tune edge doesn't
+      transfer to out-of-domain gugak, 4× slower, awkward bag-of-4 in MSST; single also aligns
+      with exp001 which fine-tunes the single model).
       Framing: **pipeline validation + qualitative floor** — pretrained heads are Western
       (vocals/drums/bass/other ≠ our stems; only 타악↔drums loosely maps). Granular plan:
       - [x] 0.1 torch 2.11.0+cu128 + torchaudio installed; 3× Blackwell sm_120 verified (matmul on GPU OK)
       - [x] 0.2 MSST added as submodule `external/msst` (fork jae-gye/…, upstream=ZFTurbo, pinned 83d495d)
-      - [ ] 0.2b Reconcile MSST runtime deps into uv env (minimal set for HTDemucs/BS-RoFormer inference; uv add, not pip)
+      - [x] 0.2b MSST inference deps added (librosa/omegaconf/ml_collections/einops/openunmix/demucs 4.1.0
+            + beartype/rotary_embedding_torch/hyper_connections pinned); both models import, torch/numpy intact
       - [ ] 0.3 Pick the **pinned listening set** — 3–5 fixed val songs (incl. 판소리 + 창작국악),
             logged as `wandb.Audio` every eval across ALL experiments (the songs the user follows
             by ear); doubles as input for the first plumbing check in 0.5
       - [ ] 0.4 Build mixtures = Σstems, trim-to-shortest (reuse `src/data/audio.read_and_sum`)
-      - [ ] 0.5 HTDemucs zero-shot inference on the smoke set (plumbing check)
+      - [ ] 0.5 single htdemucs (MSST) zero-shot inference on the smoke set (plumbing check)
       - [ ] 0.6 Metric pass on **FULL val (91 songs)**: SI-SDR/SDR, per-stem AND per-genre
       - [ ] 0.7 wandb run: git hash + config + `wandb.Audio` triplets for the fixed songs
-      - [ ] 0.8 Repeat for BS-RoFormer → stage (0) done
+      - [ ] 0.8 Repeat for viperx BS-RoFormer (MSST) → stage (0) done
 - [ ] (1) 4-stem grouping + stem-summing dataloader
 - [ ] (2) exp001: HTDemucs fine-tune 4-stem (validates training pipeline)
 - [ ] (3) exp002: BS-RoFormer fine-tune → compare → first wandb Report
