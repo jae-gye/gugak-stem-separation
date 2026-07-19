@@ -39,15 +39,17 @@ data → baseline → fine-tune → compare → share.
       - [x] 0.2 MSST added as submodule `external/msst` (fork jae-gye/…, upstream=ZFTurbo, pinned 83d495d)
       - [x] 0.2b MSST inference deps added (librosa/omegaconf/ml_collections/einops/openunmix/demucs 4.1.0
             + beartype/rotary_embedding_torch/hyper_connections pinned); both models import, torch/numpy intact
-      - [ ] 0.3 Pick the **pinned listening set** — 3–5 fixed val songs (incl. 판소리 + 창작국악),
-            logged as `wandb.Audio` every eval across ALL experiments (the songs the user follows
-            by ear); doubles as input for the first plumbing check in 0.5
+      - [x] 0.3 **Pinned listening set** (`scripts/make_listening_set.py` → `data/listening_set/`,
+            logged as `wandb.Audio` each eval across ALL experiments): 판소리 0631 · 창작국악 0854 ·
+            풍류음악 0006 · 민요 0721 · 산조 0196. Doubles as smoke-test input in 0.5.
       - [ ] 0.4 Build mixtures = Σstems, trim-to-shortest (reuse `src/data/audio.read_and_sum`)
       - [ ] 0.5 single htdemucs (MSST) zero-shot inference on the smoke set (plumbing check)
       - [ ] 0.6 Metric pass on **FULL val (91 songs)**: SI-SDR/SDR, per-stem AND per-genre
       - [ ] 0.7 wandb run: git hash + config + `wandb.Audio` triplets for the fixed songs
       - [ ] 0.8 Repeat for viperx BS-RoFormer (MSST) → stage (0) done
-- [ ] (1) 4-stem grouping + stem-summing dataloader
+- [ ] (1) 4-stem grouping + stem-summing dataloader (+ build `data/splits/{train,val,test}/`
+      symlink view from the manifest for MSST's dir-based training — do NOT physically move
+      `extracted/`; our split is logical, symlink-view only)
 - [ ] (2) exp001: HTDemucs fine-tune 4-stem (validates training pipeline)
 - [ ] (3) exp002: BS-RoFormer fine-tune → compare → first wandb Report
 - [ ] (4) Produce deliverables (graphs, charts, tables, key insights + plans) briefing progress for the instructor meeting.
@@ -92,7 +94,9 @@ data → baseline → fine-tune → compare → share.
   on disk `<song>_master.wav` vs metadata records `<song>.wav`.
 
 ## Repo Conventions
-- One experiment = one config (`configs/*.yaml`) = one wandb run. Change configs, not code, for hyperparameters.
+- **Experiment configs:** one per experiment (`configs/*.yaml`) = one wandb run; change configs,
+  not code, for hyperparameters. **Shared/cross-experiment configs** (e.g. `configs/listening_set.yaml`)
+  also live in `configs/`. If it grows, split `configs/experiments/` vs `configs/shared/`.
 - Run naming: `expNNN_<model>_<stemscheme>_<key-hparam>` (e.g. `exp003_bsroformer_4stem_lr1e-5`).
 - Log git commit hash + full config to wandb for every run.
 - Manifests, not directory walking. Split frozen in the manifest; commit it. Never let chunks of one
@@ -106,7 +110,9 @@ data → baseline → fine-tune → compare → share.
 - **NEVER commit or push without explicit confirmation** (see Guardrails).
 - **Tags:** `init` (scaffolding) · `data` (dataset/manifests/preprocessing/dataloaders) ·
   `eda` (analysis/notebooks/figures) · `model` (model code & MSST wrappers we write) ·
-  `exp` (experiment configs + training runs) · `eval` (metrics/results/wandb reports) ·
+  `exp` (per-experiment run configs + training runs) ·
+  `config` (shared/infra configs & config plumbing, e.g. listening_set — NOT per-experiment run configs) ·
+  `eval` (metrics/results/wandb reports) ·
   `deps` (dependencies, lockfile, submodules, toolchain/env — pyproject, uv.lock, `external/*`) ·
   `fix` (bug fixes) · `docs` (README, `docs/`, CLAUDE.md, status) ·
   `chore` (pure housekeeping: gitignore, file moves, formatting, CI) ·
