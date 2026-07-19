@@ -6,29 +6,47 @@ Stem separation on a traditional Korean music (gugak) multitrack dataset
 archiving/cataloguing workstream; also a full experiment-cycle practice run:
 data → baseline → fine-tune → compare → share.
 
-## Status (2026-07-18)
+## Status (2026-07-19)
 - **Data:** downloaded → extracted → **manifested**. Working set = **903 songs / 6,670 tracks**.
   Full status: `docs/dataset_status.md`.
-- **Env:** `uv` project, Python 3.11. PyTorch not installed yet (added at modeling).
-- **Now:** EDA Phase 2 mostly done (residual, stem QC, 96 kHz confirmed). Remaining:
-  판소리 length-align + per-genre/instrument stats → deliverable, then modeling baselines. No experiments run yet.
+- **Env:** `uv` project, Python 3.11. PyTorch not installed yet (added at modeling step 0.1).
+- **Now:** EDA **done & frozen** (Phases 0–3; Phase 4 deliverable assembly remains). Meeting figures
+  ready: `notebooks/fig_master_vs_sum.png`, `fig_dataset_overview.png`. **Modeling: 0.1–0.2 done
+  (torch 2.11.0+cu128; MSST submodule at `external/msst`). Next: 0.2b MSST deps.** No experiments run yet.
+- **GPU (confirmed 2026-07-19):** 3× RTX PRO 6000 Blackwell Server Edition, 96 GB each, driver
+  590.48 (CUDA 13.1). Blackwell = sm_120 → PyTorch **cu128** build (pinned in `pyproject.toml`).
 
 ## Roadmap (tick off)
 **EDA**
 - [x] Phase 0 — Repo scaffold + uv env
 - [x] Phase 1 — Manifest: own stratified split + header-level audio props
-- [~] Phase 2 — Audio-content EDA: [x] master ≈ Σ(stems) residual (master ≠ sum: mastered/nonlinear,
-      genre-dependent → train on Σstems, master=secondary eval); [x] silence/clipping/loudness (clean,
-      sample only, no full scan); [x] confirm 96 kHz resample; [ ] 판소리 length-align; [ ] per-genre/instrument stats
-- [ ] Phase 3 — Finalize 24→4 stem mapping; decide 판소리 handling; freeze → EDA done
-- [ ] Phase 4 — Produce deliverables (graphs, charts, tables with numbers) for the instructor meeting.
+- [x] Phase 2 — Audio-content EDA: master ≠ Σ(stems) verified (details in gotchas); stem QC clean
+      (sample only); 96 kHz confirmed (130 files); 판소리 length-align (trim-to-shortest);
+      per-genre/instrument stats + overview dashboard
+- [x] Phase 3 — **Frozen 2026-07-19.** 4-class scheme ratified by user (revisitable — see Stem
+      Schemes); 양금→발현; 판소리 included normally (trim-to-shortest). → EDA done
+- [~] Phase 4 — Deliverables: `fig_master_vs_sum.png` + `fig_dataset_overview.png` produced
+      (local, gitignored); assemble/polish for the instructor meeting
 
 **Modeling**
-- [ ] Zero-shot pretrained baselines (HTDemucs + BS-RoFormer) on a val subset → wandb
-- [ ] 4-stem grouping + stem-summing dataloader
-- [ ] exp001: HTDemucs fine-tune (validates pipeline)
-- [ ] exp002: BS-RoFormer fine-tune → compare → first wandb Report
-- [ ] Produce deliverables (graphs, charts, tables, key insights + plans) briefing progress for the instructor meeting.
+- [ ] (0) Zero-shot pretrained baselines (HTDemucs + BS-RoFormer) → wandb.
+      Framing: **pipeline validation + qualitative floor** — pretrained heads are Western
+      (vocals/drums/bass/other ≠ our stems; only 타악↔drums loosely maps). Granular plan:
+      - [x] 0.1 torch 2.11.0+cu128 + torchaudio installed; 3× Blackwell sm_120 verified (matmul on GPU OK)
+      - [x] 0.2 MSST added as submodule `external/msst` (fork jae-gye/…, upstream=ZFTurbo, pinned 83d495d)
+      - [ ] 0.2b Reconcile MSST runtime deps into uv env (minimal set for HTDemucs/BS-RoFormer inference; uv add, not pip)
+      - [ ] 0.3 Pick the **pinned listening set** — 3–5 fixed val songs (incl. 판소리 + 창작국악),
+            logged as `wandb.Audio` every eval across ALL experiments (the songs the user follows
+            by ear); doubles as input for the first plumbing check in 0.5
+      - [ ] 0.4 Build mixtures = Σstems, trim-to-shortest (reuse `src/data/audio.read_and_sum`)
+      - [ ] 0.5 HTDemucs zero-shot inference on the smoke set (plumbing check)
+      - [ ] 0.6 Metric pass on **FULL val (91 songs)**: SI-SDR/SDR, per-stem AND per-genre
+      - [ ] 0.7 wandb run: git hash + config + `wandb.Audio` triplets for the fixed songs
+      - [ ] 0.8 Repeat for BS-RoFormer → stage (0) done
+- [ ] (1) 4-stem grouping + stem-summing dataloader
+- [ ] (2) exp001: HTDemucs fine-tune 4-stem (validates training pipeline)
+- [ ] (3) exp002: BS-RoFormer fine-tune → compare → first wandb Report
+- [ ] (4) Produce deliverables (graphs, charts, tables, key insights + plans) briefing progress for the instructor meeting.
 
 ## Environment
 - **Package manager: uv** (not conda). `uv add`, `uv run`, `uv sync`. Deps in `pyproject.toml`;
@@ -77,6 +95,19 @@ data → baseline → fine-tune → compare → share.
   song cross splits (audio leakage).
 - Notebooks (`notebooks/`) = EDA only. Seeds set (torch/numpy/random). Paths in config/.env, never hardcoded.
 
+## Commit Guidelines
+- **Format:** `[tag] imperative summary`. Optional body = terse bullets, one line per file/area
+  (no prose sentences). **Header-only** for small/single-purpose commits; add bullets only when
+  there's genuinely more than one notable change. **No `Co-Authored-By` trailer.** Tag by primary intent.
+- **NEVER commit or push without explicit confirmation** (see Guardrails).
+- **Tags:** `init` (scaffolding) · `data` (dataset/manifests/preprocessing/dataloaders) ·
+  `eda` (analysis/notebooks/figures) · `model` (model code & MSST wrappers we write) ·
+  `exp` (experiment configs + training runs) · `eval` (metrics/results/wandb reports) ·
+  `deps` (dependencies, lockfile, submodules, toolchain/env — pyproject, uv.lock, `external/*`) ·
+  `fix` (bug fixes) · `docs` (README, `docs/`, CLAUDE.md, status) ·
+  `chore` (pure housekeeping: gitignore, file moves, formatting, CI) ·
+  `refactor` (restructure, no behavior change)
+
 ## Repo Structure
 ```
 configs/     one YAML per experiment
@@ -91,8 +122,13 @@ external/    ZFTurbo MSST repo (submodule/vendored)
 ```
 
 ## Stem Schemes
-- **4-stem (exp1):** 타악 / 관악 / 찰현 / 발현 (voice absent → no 5th stem). Provisional 24→4 mapping is
-  in the manifest (`stem_group_4`); finalize in EDA Phase 3.
+- **4-stem (exp1) — ratified 2026-07-19, deliberately revisitable:** 타악 / 관악 / 찰현 / 발현
+  (voice absent → no 5th stem). Mapping frozen in the manifest (`stem_group_4`); 양금→발현
+  (struck string, but pitched-decay timbre — user signed off by ear).
+  ⚠️ **This grouping is OUR design, not the dataset's** (the dataset ships 24 sub-classes / 9 majors,
+  no 4-family scheme). Chosen to match 4-headed pretrained models + balanced hours (114/92/91/72).
+  It is a **crucial, revisitable decision**: we may later adopt the 9 majors, or re-group entirely
+  (e.g. for granular per-instrument work). Revisit deliberately, not by accident.
 - **2-stem target-vs-rest (exp2):** per big instrument; hard pairs 대금↔피리, 해금↔아쟁, 가야금↔거문고.
 
 ## Modeling Plan
@@ -112,6 +148,13 @@ external/    ZFTurbo MSST repo (submodule/vendored)
 - Lab share-outs go in wandb Reports.
 
 ## Guardrails for Claude Code
+- **NEVER, EVER commit without discussion first. ALWAYS get an EXPLICIT confirmation before commit or push - VERY IMPORTANT!**
+- CLAUDE.md changes need no permission, but **ALWAYS report them explicitly in the reply**
+  ("added X to CLAUDE.md", "ticked Y in Roadmap") so the user can track the evolving plan/context.
+- **CLAUDE.md is the living planner (user preference — IMPORTANT).** The Roadmap here must never
+  diverge from what we're actually doing. In the SAME turn that (a) a plan is agreed in conversation,
+  (b) an item completes, or (c) the plan changes — update the Roadmap/Status here (and report it,
+  per the bullet above). Keep granular sub-plans only for the current milestone; prune once done.
 - **Work granularly (personal preference — IMPORTANT).** One task/step per turn, then STOP and
   check in before the next. Prefer many small decisions the user makes over batching work
   autonomously. This project is **as much about the user's education as productivity** — explain
