@@ -12,7 +12,10 @@ data → baseline → fine-tune → compare → share.
 - **Env:** `uv` project, Python 3.11. PyTorch not installed yet (added at modeling step 0.1).
 - **Now:** EDA **done & frozen** (Phases 0–3; Phase 4 deliverable assembly remains). Meeting figures
   ready: `notebooks/fig_master_vs_sum.png`, `fig_dataset_overview.png`. **Modeling: 0.1–0.2 done
-  (torch 2.11.0+cu128; MSST submodule; inference deps in). Next: 0.3 pick pinned listening set.** No experiments run yet.
+  torch cu128 + MSST submodule + inference deps + listening set. **Zero-shot baseline COMPLETE** —
+  full val (91), htdemucs + 4-stem bs_roformer, metric + `notebooks/fig_zeroshot_baseline.png`
+  (median 타악↔drums SI-SDR htdemucs −2.1 / bsroformer −9.8 dB; 창작국악 +10/+12 the bright spot);
+  wandb logged OFFLINE (sync when team chosen). Next: assemble deliverables / exp001 fine-tune.** No fine-tune yet.
 - **GPU (confirmed 2026-07-19):** 3× RTX PRO 6000 Blackwell Server Edition, 96 GB each, driver
   590.48 (CUDA 13.1). Blackwell = sm_120 → PyTorch **cu128** build (pinned in `pyproject.toml`).
 
@@ -29,12 +32,14 @@ data → baseline → fine-tune → compare → share.
       (local, gitignored); assemble/polish for the instructor meeting
 
 **Modeling**
-- [ ] (0) Zero-shot pretrained baselines → wandb. **Models: single `htdemucs` + viperx
-      `bs_roformer`, both via MSST** (NOT htdemucs_ft — its Western fine-tune edge doesn't
-      transfer to out-of-domain gugak, 4× slower, awkward bag-of-4 in MSST; single also aligns
-      with exp001 which fine-tunes the single model).
-      Framing: **pipeline validation + qualitative floor** — pretrained heads are Western
-      (vocals/drums/bass/other ≠ our stems; only 타악↔drums loosely maps). Granular plan:
+- [x] (0) Zero-shot pretrained baselines → wandb. **Models: single `htdemucs` (native `demucs`,
+      4-stem) + 4-stem MUSDB `bs_roformer` (MSST, `model_bs_roformer_ep_17_sdr_9.6568`)** — NOT
+      htdemucs_ft (Western-FT edge doesn't transfer OOD), NOT the viperx vocals bs_roformer (that
+      was a smoke-only footnote — it's a *vocals* checkpoint, wrong output head for us; bs_roformer
+      the ARCHITECTURE is general/SOTA — the 4-stem checkpoint is the right base + exp002 warm-start).
+      Framing: **pipeline validation + qualitative floor** — Western heads (drums/bass/other/vocals)
+      ≠ our stems; only 타악↔drums loosely maps. **Metric: per-genre energy distribution + 타악↔drums
+      SI-SDR** (full per-stem SDR isn't meaningful cross-domain). Granular plan:
       - [x] 0.1 torch 2.11.0+cu128 + torchaudio installed; 3× Blackwell sm_120 verified (matmul on GPU OK)
       - [x] 0.2 MSST added as submodule `external/msst` (fork jae-gye/…, upstream=ZFTurbo, pinned 83d495d)
       - [x] 0.2b MSST inference deps added (librosa/omegaconf/ml_collections/einops/openunmix/demucs 4.1.0
@@ -43,10 +48,20 @@ data → baseline → fine-tune → compare → share.
             logged as `wandb.Audio` each eval across ALL experiments): 판소리 0631 · 창작국악 0854 ·
             풍류음악 0006 · 민요 0721 · 산조 0196. Doubles as smoke-test input in 0.5.
       - [ ] 0.4 Build mixtures = Σstems, trim-to-shortest (reuse `src/data/audio.read_and_sum`)
-      - [ ] 0.5 single htdemucs (MSST) zero-shot inference on the smoke set (plumbing check)
-      - [ ] 0.6 Metric pass on **FULL val (91 songs)**: SI-SDR/SDR, per-stem AND per-genre
-      - [ ] 0.7 wandb run: git hash + config + `wandb.Audio` triplets for the fixed songs
-      - [ ] 0.8 Repeat for viperx BS-RoFormer (MSST) → stage (0) done
+      - [x] 0.5 htdemucs zero-shot smoke inference on the 5 songs — ran via **native `demucs`**
+            (canonical single-htdemucs runner, zero-setup, identical model; MSST wrapper deferred to
+            fine-tuning). `scripts/zeroshot_infer.py`. Result: "other" 59–95% (melodic gugak has no
+            Western home); percussion→drums loosely (판소리 13%, 창작 23%; ~0 정악).
+      - [x] 0.6 FULL-val (91) metric, both models (`scripts/eval_val.py` → data/_val/metrics.parquet):
+            per-genre energy + 타악↔drums SI-SDR. Median SI-SDR htdemucs −2.1 / bsroformer −9.8 dB, BUT
+            **창작국악 POSITIVE (+10/+12)** — percussion transfers where gugak is Western-adjacent.
+            Deliverable fig: `notebooks/fig_zeroshot_baseline.png`.
+      - [x] 0.7 wandb baseline run logged **OFFLINE** (`scripts/wandb_log_zeroshot.py`: summary + tables +
+            per-genre bars + 45 audio excerpts). SYNC LATER — user left the auto-created academic team, so
+            the account has no default entity yet; `wandb sync wandb/offline-run-*` once a team is chosen.
+      - [x] 0.8 **4-stem MUSDB BS-RoFormer full-val done** (`scripts/infer_val.py`, both models on all 91).
+            Supersedes the viperx-vocals *smoke* footnote (that checkpoint was vocals-only; the 4-stem
+            MUSDB checkpoint is the baseline + exp002 warm-start). → **stage (0) zero-shot COMPLETE.**
 - [ ] (1) 4-stem grouping + stem-summing dataloader (+ build `data/splits/{train,val,test}/`
       symlink view from the manifest for MSST's dir-based training — do NOT physically move
       `extracted/`; our split is logical, symlink-view only)
@@ -81,6 +96,11 @@ data → baseline → fine-tune → compare → share.
   (mix:=Σstems, targets:=stems — self-consistent). The real master is NOT the sum: mastered
   (per-stem faders + reverb/FX), genre-dependent (민요 ≈ clean sum, 창작국악 heavily processed).
   → master = **secondary real-world eval only**; do NOT invert master→stems.
+- **Our mixture recipe (meeting-relevant):** mix := Σ(stems) → **trim all stems to the shortest
+  per song** → **peak-normalize the MIXTURE to 0.99** (never per-stem — preserves the balance).
+  Native SR (96 kHz resampled to model SR at inference). This is OUR mixture (our analog to a
+  "master"), distinct from the dataset's real mastered master. Code: `src/data/audio.read_and_sum`
+  + `scripts/build_mixtures.py`.
 - **Stem QC (Phase 2 sample) = clean:** 0 dead stems, clipping negligible (drop the check),
   loudness ~−19 LUFS. **Sparse ≠ dead** — do NOT auto-drop low-activity stems (박 etc. play
   rarely by design). Normalize the mixture, never per-stem. No full scan needed.
@@ -146,6 +166,8 @@ external/    ZFTurbo MSST repo (submodule/vendored)
   BS-RoFormer, Mel-Band RoFormer, SCNet; fine-tune from pretrained. Don't reimplement what MSST provides.
 - **Custom later:** `src/models/` for gugak-specific ideas + ablations.
 - Order: (0) zero-shot baselines → (1) HTDemucs fine-tune 4-stem → (2) BS-RoFormer 4-stem → compare.
+- **Candidate for further experiments:** Mel-Band RoFormer (sibling of BS-RoFormer, often stronger
+  for 4-stem) — try after exp002. Keep on the todo shortlist.
 
 ## Evaluation
 - Training metric: SI-SDR (fast). Reported metric: museval-style chunked SDR (literature-comparable).

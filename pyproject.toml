@@ -24,6 +24,7 @@ dependencies = [
     "beartype==0.14.1",
     "rotary-embedding-torch==0.3.5",
     "hyper-connections==0.1.11",
+    "wandb>=0.28.1",
 ]
 
 # Application project (no build-system) -> uv manages the env, does not build the root as a package.
