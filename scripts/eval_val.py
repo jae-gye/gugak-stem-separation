@@ -6,7 +6,8 @@ Two honest measures given the Western↔gugak head mismatch:
     each model dumps gugak content;
   - 타악↔drums SI-SDR — the one loosely-comparable number (predicted 'drums' vs GT 타악 = Σ타악 stems).
 Full per-stem SDR isn't meaningful cross-domain; the real per-stem SDR comes after fine-tuning.
-Saves data/_val/metrics.parquet + prints a per-genre summary.
+Reads predictions from data/_val/ (heavy audio, storage symlink); saves the light metrics
+(parquet + csv mirror) into experiments/ and prints a per-genre summary.
 """
 from __future__ import annotations
 
@@ -24,6 +25,8 @@ from src.data.audio import read_and_sum, read_audio, rms, to_mono  # noqa: E402
 MODELS = ["htdemucs", "bsroformer"]
 STEMS = ["drums", "bass", "other", "vocals"]
 PRED_SR = 44100
+# light experiment artifacts live in the tracked experiments/ tree (heavy audio stays in data/_val)
+EXP_DIR = ROOT / "experiments" / "zeroshot_baseline_260719"
 
 
 def si_sdr(est: np.ndarray, ref: np.ndarray, eps: float = 1e-9) -> float:
@@ -65,7 +68,9 @@ def main() -> None:
         rows.append(rec)
 
     df = pd.DataFrame(rows)
-    df.to_parquet(ROOT / "data" / "_val" / "metrics.parquet", index=False)
+    EXP_DIR.mkdir(parents=True, exist_ok=True)
+    df.to_parquet(EXP_DIR / "metrics.parquet", index=False)
+    df.round(4).to_csv(EXP_DIR / "metrics.csv", index=False)  # diff-able mirror
 
     pd.set_option("display.width", 200)
     print(f"\n=== ENERGY distribution — mean % per genre (n={len(df)} val songs) ===")

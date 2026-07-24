@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Zero-shot baseline deliverable figure: per-model energy distribution + 타악 recovery SI-SDR.
 
-Reads data/_val/metrics.parquet -> notebooks/fig_zeroshot_baseline.png.
+Reads experiments/zeroshot_baseline_260719/metrics.parquet -> .../figures/fig_zeroshot_baseline.png.
 Note: model output heads (drums/bass/other/vocals) are the Western models' own stem names,
 kept as-is. Our gugak group 타악 is kept in Korean (not anglicised); the SI-SDR measures how
 well each model's `drums` head recovers ground-truth 타악.
@@ -20,7 +20,8 @@ import koreanize_matplotlib  # noqa: E402,F401
 from matplotlib.patches import Patch  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
-m = pd.read_parquet(ROOT / "data" / "_val" / "metrics.parquet")
+EXP_DIR = ROOT / "experiments" / "zeroshot_baseline_260719"
+m = pd.read_parquet(EXP_DIR / "metrics.parquet")
 MODELS = [("htdemucs", "htdemucs"), ("bsroformer", "4-stem BS-RoFormer")]
 STACK = ["drums", "bass", "vocals", "other"]          # model output heads (kept as-is)
 SC = {"drums": "#D55E00", "bass": "#0072B2", "vocals": "#009E73", "other": "#BDBDBD"}
@@ -66,7 +67,8 @@ fig.suptitle("Zero-shot baseline — Western separators on gugak (91 val songs):
              "melodic → \"other\"; 타악 recovered only for Western-adjacent 창작국악",
              fontsize=13, weight="bold", y=1.0)
 fig.tight_layout()
-out = ROOT / "notebooks" / "fig_zeroshot_baseline.png"
+out = EXP_DIR / "figures" / "fig_zeroshot_baseline.png"
+out.parent.mkdir(parents=True, exist_ok=True)
 fig.savefig(out, dpi=110, bbox_inches="tight")
 print("saved", out)
 

@@ -19,6 +19,10 @@ outputs/
 #     generated images so binaries stay out of a public repo ---
 notebooks/*.png
 
+# --- experiments/: track light data (parquet/csv) + notes; never track figures
+#     (regenerable from the tracked metrics + script — keeps binaries out of git) ---
+experiments/**/*.png
+
 # --- OS / editor ---
 .DS_Store
 

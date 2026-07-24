@@ -3,7 +3,7 @@
 
 Creates project `gugak-stem-separation`, run `zeroshot-baseline`, logging:
   - summary: overall 타악↔drums SI-SDR median per model
-  - per-song metrics table (from data/_val/metrics.parquet)
+  - per-song metrics table (from experiments/zeroshot_baseline_260719/metrics.parquet)
   - per-genre 타악↔drums SI-SDR bar charts
   - per-genre energy-distribution tables
   - 25s mono audio excerpts (mix + both models' 4 stems) for the 5 pinned songs
@@ -36,7 +36,7 @@ def excerpt_mono(path: Path, secs: float = 25.0):
 
 
 def main() -> None:
-    metrics = pd.read_parquet(ROOT / "data" / "_val" / "metrics.parquet")
+    metrics = pd.read_parquet(ROOT / "experiments" / "zeroshot_baseline_260719" / "metrics.parquet")
     pinned = yaml.safe_load((ROOT / "configs" / "listening_set.yaml").read_text("utf-8"))["listening_set"]
     git = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--short", "HEAD"],
                          capture_output=True, text=True).stdout.strip()
