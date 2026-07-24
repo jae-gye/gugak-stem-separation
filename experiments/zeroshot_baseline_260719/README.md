@@ -1,5 +1,12 @@
 # zeroshot_baseline_260719
 
+> ⚠️ **SUPERSEDED (2026-07-24) — historical footnote.** In the 2026-07-24 dataset restructure the
+> seed-42 manifest, the `data/_val/` prediction audio, and the mixtures this run depended on were
+> deleted; the dataset dir was renamed to `gugak_ensemble_71955/`. These metrics are **not
+> reproducible as-is and not comparable** to future runs (a fresh zero-shot under the settled
+> stem-class scheme is planned — see Notion). Kept only as a record that a zero-shot was done and
+> what it showed. Relevancy minimal.
+
 Zero-shot Western separators on gugak — **pipeline validation + OOD floor**, no fine-tuning.
 
 ## Setup

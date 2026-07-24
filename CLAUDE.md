@@ -42,12 +42,17 @@ Remove this block once the power-off has passed.
 ## Dataset  (full status → `docs/dataset_status.md`)
 - **903 songs** with audio (published 1,004 minus the 101 withheld-test songs); 1 master + N stems
   each; **6,670 WAVs**. 48 kHz / 24-bit / stereo, **except 130 files at 96 kHz** (창작국악 → resample).
-- **On disk:** `data/extracted/<dl_folder>/source/<song>/` = `<song>_master.wav` + `<song>_<instrument>.wav`.
-  `data/` is a symlink → `~/storage/nia-gugak`.
-- **Manifest = source of truth** (never walk directories): `manifests/songs.parquet` (903) +
-  `stems.parquet` (5,767) [+ csv mirrors], built by `src/data/build_manifest.py`.
-- **Our own split** (publisher's split CSVs/folders are inconsistent & incomplete — ignored):
-  song-level, stratified by genreSub, **seed 42, 80/10/10** = train 721 / val 91 / test 91. Frozen in the manifest.
+- **On disk:** `data/gugak_ensemble_71955/source/<song>/` = `<song>_master.wav` + `<song>_<instrument>.wav`;
+  tagging JSONs in `data/gugak_ensemble_71955/labels/`. `data/` is a symlink → `~/storage/nia-gugak`.
+  Publisher train/val folders were flattened away (we use our own split); the `_71955` name keeps this
+  ensemble set separate from the future **71470 solo** set (which will get its own sibling symlink).
+- **Manifest = source of truth when present** (never walk directories): built by
+  `src/data/build_manifest.py`. ⚠️ The previous manifest + seed-42 split were **removed 2026-07-24**
+  pending a rebuild + re-stratify that folds in the 71470 solo data — **there is currently no frozen
+  manifest**; the rebuild/split plan lives in Notion.
+- **Split principle** (publisher's split CSVs/folders are inconsistent & incomplete — ignored):
+  own song-level split, stratified by genreSub, seed-pinned, no song crossing splits. Concrete
+  ratios/counts are set at rebuild time → Notion.
 
 ### Key facts & gotchas
 - **No vocal/소리 stem** anywhere (incl. 판소리 — its masters also appear voiceless) → **no voice
@@ -101,9 +106,9 @@ scripts/     data acquisition / extraction one-offs
 notebooks/   EDA only
 experiments/ per-experiment LIGHT artifacts (metrics parquet+csv + notes) — committed;
              figures gitignored (regenerable). Convention → experiments/README.md
-manifests/   frozen manifest (songs/stems parquet+csv) — committed
+manifests/   frozen manifest (songs/stems parquet+csv) when built — committed; currently empty (rebuild → Notion)
 docs/        status page & write-ups
-data/        -> symlink to ~/storage/nia-gugak (dataset + heavy eval audio; not tracked)
+data/        -> symlink to ~/storage/nia-gugak (dataset; not tracked). Sets: gugak_ensemble_71955/ (+ 71470 solo later)
 external/    ZFTurbo MSST repo (submodule/vendored)
 ```
 
