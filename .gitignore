@@ -4,10 +4,11 @@ __pycache__/
 *.py[cod]
 .ipynb_checkpoints/
 
-# --- data (root symlink to /storage dataset; never track the audio) ---
-# anchored to repo root with a leading slash so it does NOT also match src/data/,
-# and no trailing slash so it matches the symlink (git treats a symlink as a file).
-/data
+# --- data/ is a REAL dir in the repo; track light metadata/ + eda/ (CSV/parquet),
+#     but NEVER track the dataset symlinks (huge audio living in ~/storage).
+#     Leading slash anchors to repo root so src/data/ is unaffected. ---
+/data/gugak_ensemble_71955
+/data/gugak_solo_71470
 
 # --- experiment outputs ---
 wandb/
