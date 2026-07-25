@@ -10,6 +10,9 @@ __pycache__/
 /data/gugak_ensemble_71955
 /data/gugak_solo_71470
 
+# --- figs/: generated plots (regenerable from the notebook/scripts that emit them) ---
+figs/*.png
+
 # --- experiment outputs ---
 wandb/
 checkpoints/
