@@ -35,3 +35,6 @@ experiments/**/*.png
 
 # NOTE: uv.lock IS committed (reproducible env) — do not ignore it.
 # NOTE: manifests/*.parquet ARE committed (frozen splits) — do not ignore them.
+#       CSV twins are committed case-by-case (size call, see CLAUDE.md); the
+#       5 MB ingest_manifest.csv stays on-disk-only for reading, parquet is source.
+manifests/ingest_manifest.csv

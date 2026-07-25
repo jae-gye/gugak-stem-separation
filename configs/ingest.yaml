@@ -1,0 +1,35 @@
+# ingest.yaml — offline deterministic preprocessing of BOTH datasets.
+# Consumed by src/data/ingest.py. One-shot, per-file, idempotent. See Notion ·
+# Training Data Strategy → "Offline ingest". Change values here, not code.
+
+# --- canonical output format ---
+target_sr: 44100            # matches HTDemucs / BS-RoFormer pretrain checkpoints
+output_subtype: PCM_24      # 24-bit PCM out (soundfile subtype)
+resampler_quality: VHQ      # soxr quality: VHQ = variable-very-high (best)
+
+# --- peak handling (applied AFTER resample — resampling can overshoot) ---
+peak_ceiling: 1.0           # normalize only if post-resample peak exceeds this
+peak_target: 0.99           # scale so peak lands here when a file exceeds the ceiling
+
+# --- channel rule (from QC L/R correlation) ---
+# dual-mono (corr ~ +1) and anti-phase (corr ~ -1) collapse to ONE channel: absolute
+# polarity is inaudible and a single channel avoids comb-filter artifacts near ±1.
+# genuinely true-stereo files are kept as-is; mono stays mono (centered at mix time).
+dualmono_corr: 0.9999       # stereo corr >= this  -> treat as dual-mono, keep one channel
+antiphase_corr: -0.5        # stereo corr <= this  -> anti-phase, keep one channel
+keep_channel: 0             # which channel to keep when collapsing (0 = left)
+
+# --- inputs (source-of-truth tables; never walk directories) ---
+qc_parquet: data/eda/audio_qc.parquet          # full per-file scan drives channel decisions
+eval_manifest: manifests/eval_manifest.parquet # frozen 71955 song-level split (train/val/test)
+
+# --- outputs ---
+out_manifest: manifests/ingest_manifest        # .parquet + .csv written alongside
+
+# --- per-dataset paths (ingest/ lives inside each dataset dir → NVMe via symlink) ---
+datasets:
+  "71955":
+    ingest_dir: data/gugak_ensemble_71955/ingest   # mirrors source/<song>/<file>.wav
+  "71470":
+    ingest_dir: data/gugak_solo_71470/ingest        # flat <clip>.wav
+    labels_dir: data/gugak_solo_71470/labels        # per-clip JSON (instrument_cd, genre_cd)
