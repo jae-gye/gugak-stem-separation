@@ -18,11 +18,14 @@ This file is intentionally roadmap-free so it can't drift out of sync the way it
   a decision is made. (The old CLAUDE.md-as-living-planner discipline now applies to Notion.)
 - **On any conflict, Notion wins** — it is the newer, authoritative plan. This file may lag on
   anything plan-shaped; trust Notion for that, trust this file for stable facts/conventions.
+- **Single-copy rule:** every fact has exactly one home. Anything plan-shaped, or already stated in
+  Notion, gets a pointer here — not a copy.
 
 ## Project
-Stem separation on a traditional Korean music (gugak) multitrack dataset
-(AI Hub **국악합주곡 디지털 음원 데이터**, datasetkey 71955). First task in the MALer lab
-archiving/cataloguing workstream; also a full experiment-cycle practice run:
+Stem separation on traditional Korean music (gugak) multitrack data — AI Hub
+**국악합주곡 디지털 음원 데이터** (datasetkey 71955, ensemble multitracks) plus AI Hub
+**국악 악보 및 음원 데이터** (datasetkey 71470, solo-phrase pool, train-only). First task in the
+MALer lab archiving/cataloguing workstream; also a full experiment-cycle practice run:
 data → baseline → fine-tune → compare → share.
 
 ## sym8 power-off — 2026-08-01 (routine, ~1 day)
@@ -38,43 +41,55 @@ Remove this block once the power-off has passed.
 - PyTorch cu128 via the PyTorch index (uv), pinned in `pyproject.toml`.
 - **GPU (confirmed 2026-07-19):** sym8 driver 590.48 (CUDA 13.1); PyTorch **cu128** build
   (Blackwell sm_120 — hardware details in global CLAUDE.md).
+- **Audio I/O:** use `soundfile` (handles float wavs; stdlib `wave` chokes on them).
+  **Avoid `librosa`** — lab convention.
 
-## Dataset  (full status → `docs/dataset_status.md`)
-- **903 songs** with audio (published 1,004 minus the 101 withheld-test songs); 1 master + N stems
-  each; **6,670 WAVs**. 48 kHz / 24-bit / stereo, **except 130 files at 96 kHz** (창작국악 → resample).
-- **On disk:** `data/gugak_ensemble_71955/source/<song>/` = `<song>_master.wav` + `<song>_<instrument>.wav`;
-  tagging JSONs in `data/gugak_ensemble_71955/labels/`. `data/` is a symlink → `~/storage/nia-gugak`.
-  Publisher train/val folders were flattened away (we use our own split); the `_71955` name keeps this
-  ensemble set separate from the future **71470 solo** set (which will get its own sibling symlink).
-- **Manifest = source of truth when present** (never walk directories): built by
-  `src/data/build_manifest.py`. ⚠️ The previous manifest + seed-42 split were **removed 2026-07-24**
-  pending a rebuild + re-stratify that folds in the 71470 solo data — **there is currently no frozen
-  manifest**; the rebuild/split plan lives in Notion.
+## Datasets  (full status → `docs/dataset_status.md`; counts/tables → Notion)
+- **71955 (ensemble, ours-for-everything):** **903 songs** with audio (published 1,004 minus the 101
+  withheld-test songs); 1 master + N stems each; **6,670 WAVs**. 48 kHz / 24-bit / stereo,
+  **except 130 files at 96 kHz** (창작국악 → resample).
+- **71470 (solo phrases, train-only pool):** ~9,945 usable single-instrument clips + per-clip MIDI
+  (악보) and annotations. **Format-heterogeneous** — 15 (sr, bit, ch) combos incl. float wavs,
+  clips ~1–78 s → resample + unify channel/bit on ingest.
+- **On disk:** `data/` is a real directory holding one symlink per set:
+  - `data/gugak_ensemble_71955/` → `~/storage/nia-gugak` — `source/<song>/` =
+    `<song>_master.wav` + `<song>_<instrument>.wav`; tagging JSONs in `labels/`.
+    Publisher train/val folders were flattened away (we use our own split).
+  - `data/gugak_solo_71470/` → `~/storage/ngc-gugak` — flat `audio/` · `midi/` · `labels/`.
+- **Manifest = source of truth when present** (never walk directories). ⚠️ The previous manifest,
+  its seed-42 split, and the old builder (`src/data/build_manifest.py`) were **removed 2026-07-24**
+  pending a rebuild that folds in the 71470 pool — **there is currently no frozen manifest and no
+  builder**; the rebuild/split plan and fresh spec live in Notion.
 - **Split principle** (publisher's split CSVs/folders are inconsistent & incomplete — ignored):
-  own song-level split, stratified by genreSub, seed-pinned, no song crossing splits. Concrete
-  ratios/counts are set at rebuild time → Notion.
+  own song-level split, stratified by genreSub, seed-pinned, no song crossing splits. Test + val
+  are frozen 71955 song lists; the training side is **generated augmented mixes, not a song-count
+  split**. Concrete ratios/counts and the augmentation design → Notion.
 
 ### Key facts & gotchas
-- **No vocal/소리 stem** anywhere (incl. 판소리 — its masters also appear voiceless) → **no voice
-  stem in any scheme.**
-- **master ≠ Σ(stems) (verified, Phase 2).** Build training mixtures by **summing stems**
-  (mix:=Σstems, targets:=stems — self-consistent). The real master is NOT the sum: mastered
-  (per-stem faders + reverb/FX), genre-dependent (민요 ≈ clean sum, 창작국악 heavily processed).
-  → master = **secondary real-world eval only**; do NOT invert master→stems.
-- **Our mixture recipe:** mix := Σ(stems) → **trim all stems to the shortest per song** →
-  **peak-normalize the MIXTURE to 0.99** (never per-stem — preserves the balance). Native SR
-  (96 kHz resampled to model SR at inference). This is OUR mixture (our analog to a "master"),
-  distinct from the dataset's real mastered master. Code: `src/data/audio.read_and_sum`
-  + `scripts/build_mixtures.py`.
-- **Stem QC (Phase 2 sample) = clean:** 0 dead stems, clipping negligible (drop the check),
-  loudness ~−19 LUFS. **Sparse ≠ dead** — do NOT auto-drop low-activity stems (박 etc. play
-  rarely by design). Normalize the mixture, never per-stem. No full scan needed.
+- **Vocals:** 71955 has **no vocal/소리 stem** anywhere (incl. 판소리 — its masters also appear
+  voiceless). 71470 **does** supply clean solo vocal clips → whether the scheme gains a voice class
+  is a live decision → Notion. Do not assume "no voice stem" as settled.
+- **master ≠ Σ(stems) (verified, Phase 2).** The publisher master is mastered (per-stem faders +
+  reverb/FX) and genre-dependent (민요 ≈ clean sum, 창작국악 heavily processed).
+  → **never invert master → stems**; the stem targets do not sum to it.
+  **Training mixtures** — they are generated augmented mixes → Notion
+  (Training Data Strategy).
+- **Two variants per eval song:** publisher master + Σstem mix. **Early stopping and monitoring run
+  on the Σstem variant only** — master-val carries an irreducible error floor (the mastering
+  residual), which muddies curves and early-stop signals. Master-val is a real-world reference,
+  never model selection. Rationale → Notion.
+- **Audio QC — full scan done 2026-07-25** (`scripts/audio_qc.py` → `data/eda/audio_qc.*`, both
+  sets; findings → Notion). Standing rules from it:
+  - **Sparse ≠ dead** — do NOT auto-drop low-activity stems (박 etc. play rarely by design).
+  - Normalize the mixture, never per-stem (loudness ~−19 LUFS in 71955).
+  - 71470 ingest: clamp/normalize peaks >1.0, DC-remove, and do **not** naive-average L/R to mono
+    (anti-phase clips cancel) — take one channel or a phase-aware downmix.
 - **판소리 length-align (verified, Phase 2):** stems are start-aligned; in 28 판소리 songs one stem
   (almost always **가야금**) runs *longer* than the master (usually <0.5 s, one 11 s tail) with real
   (non-silent) content the master lacks. Rule: **trim every stem to the shortest per song before
   summing** (don't pad — padding injects content the master never had). 판소리-only.
 - **Multi-instrument stems** exist (피리1/피리2/피리3…) → strip trailing digit to base, **sum same-base
-  into one source**. (향/세/당피리 subtype ambiguity — experts pending.)
+  into one source**.
 - **Korean filenames need NFC** normalization for any name join. **Master naming translation:**
   on disk `<song>_master.wav` vs metadata records `<song>.wav`.
 
@@ -100,31 +115,33 @@ Remove this block once the power-off has passed.
 ## Repo Structure
 ```
 configs/     one YAML per experiment
-src/data/    manifest building, dataset class, mixing
+src/data/    dataset class, mixing/augmentation, audio utils (manifest builder: to be rewritten)
 src/models/  MSST wrappers (later: custom models)
-scripts/     data acquisition / extraction one-offs
+scripts/     data acquisition / extraction / QC one-offs
 notebooks/   EDA only
 experiments/ per-experiment LIGHT artifacts (metrics parquet+csv + notes) — committed;
              figures gitignored (regenerable). Convention → experiments/README.md
-manifests/   frozen manifest (songs/stems parquet+csv) when built — committed; currently empty (rebuild → Notion)
+manifests/   frozen manifest (songs/stems parquet+csv) when built — committed;
+             currently EMPTY (rebuild + fresh spec → Notion)
 docs/        status page & write-ups
-data/        -> symlink to ~/storage/nia-gugak (dataset; not tracked). Sets: gugak_ensemble_71955/ (+ 71470 solo later)
-external/    ZFTurbo MSST repo (submodule/vendored)
+data/        real dir, one symlink per set (not tracked):
+             gugak_ensemble_71955/ -> ~/storage/nia-gugak
+             gugak_solo_71470/     -> ~/storage/ngc-gugak
+external/    ZFTurbo MSST repo (submodule `external/msst`, pinned)
 ```
 
 ## Modeling tooling
 - **MSST-first:** wrap ZFTurbo/Music-Source-Separation-Training. Config-driven HTDemucs,
   BS-RoFormer, Mel-Band RoFormer, SCNet; **fine-tune from pretrained** (not from scratch —
-  ~300 h multitrack is fine-tuning territory). Don't reimplement what MSST provides.
+  ~370 h ensemble stems + ~40 h solo clips is fine-tuning territory). Don't reimplement what MSST
+  provides.
 - **Custom later:** `src/models/` for gugak-specific ideas + ablations.
 - Experiment order, stem-class scheme, and model roadmap are live decisions → **Notion**.
 
-## Evaluation
-- Training metric: SI-SDR (fast). Reported metric: museval-style chunked SDR (literature-comparable).
+## Evaluation & logging
+Full protocol + wandb design → **Notion (Evaluation & Logging)**. Always-on rules:
+- Training metric: SI-SDR (fast). Reported metric: museval-style chunked SDR
+  (literature-comparable).
 - Always break results down **per-stem AND per-genre**, never global mean only.
+- Val monitoring/early stopping on the **Σstem variant** (see gotchas above).
 - Expect lower SDR than Western benchmarks (heterophony → high source overlap). Quantify, don't panic.
-
-## Logging (wandb)
-- Curves: train/val loss, LR, grad norm. Per-stem SDR/SI-SDR on a fixed val subset every N steps.
-- **Audio:** `wandb.Audio` triplets (mixture, ground-truth, predicted) for 3–5 fixed val songs each eval.
-- Lab share-outs go in wandb Reports.
