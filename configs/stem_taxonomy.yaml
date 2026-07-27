@@ -1,0 +1,133 @@
+# stem_taxonomy.yaml — CANONICAL instrument taxonomy for the gugak datasets.
+#
+# One row per canonical instrument name; per-dataset identifiers are aliases onto it.
+# This is the single machine-readable home for the mapping — `docs/stem_taxonomy.md`
+# is the human-facing explainer and derives its tables from this file.
+#
+# ⚠️ WORKING SCHEME, NOT FINAL. The grouping below is the publisher's 9 classes plus two
+#    deliberate additions (see below). It is revisited after the taxonomy lit review, and
+#    again with the prof (→ Notion · Stem Class Scheme). No "acoustic family" axis exists
+#    yet — deliberately omitted until that review lands.
+#
+# Fields
+#   stem_group   : our current working stem class (11 groups). null = HELD ASIDE, i.e.
+#                  deliberately undecided pending expert consultation + lit review — NOT
+#                  an oversight. See the held-aside section at the bottom.
+#   group_71955  : the PUBLISHER's `instrumentMajor` (their 9-class scheme), recorded
+#                  verbatim for provenance. null = instrument absent from 71955.
+#   pitched      : does the instrument produce definite pitch? Factual property, not a
+#                  grouping decision. Drives pitch-shift eligibility (still open).
+#   code_71470   : publisher `instrument_cd`. null = absent from 71470.
+#
+# The 11 working groups = the publisher's 9 (타악기 · 피리 · 대금 · 해금 · 아쟁 · 가야금 ·
+# 거문고 · 기타 · 양금) + `pitched_percussion` (유율타악) + `voice` (성악).
+#
+# `voice` exists only because of 71470 — 71955 has no vocal stem anywhere, including 판소리.
+# It is therefore the one group with zero ensemble training material.
+#
+# ⚠️ 71470 ASSIGNMENTS ARE PROVISIONAL AND MAY BE REGROUPED ON SONIC GROUNDS. A solo clip
+#    routed into a group by NAME is not guaranteed to belong there by TIMBRE — e.g. 소금 is
+#    filed under 기타 because that is where 71955 puts it, but it may sit closer to 대금
+#    acoustically. Every 71470 → stem_group assignment is tabulated in
+#    `docs/stem_taxonomy.md` §5 precisely so it can be revisited instrument by instrument.
+#
+# THE TWO ADDITIONS TO THE PUBLISHER'S SCHEME (both 2026-07-27, both provisional)
+#   1. `pitched_percussion` — 편종 · 편경 · 방향 are precisely-tuned idiophones that the
+#      publisher files under 타악기 alongside drums and clappers. Split out. They occur in
+#      exactly the same 17 songs, all 궁중음악 (train 12 / val 1 / test 4) → the only
+#      genre-locked group, and its val signal rests on ONE song. Flagged for prof: the
+#      class may be dropped or folded into 기타/misc. Track count binds harder than hours.
+#      양금 is ALSO pitched percussion by construction, but the publisher gave it its own
+#      top-level group and we preserve that — it does NOT fold in. Also flagged for prof.
+#   2. `voice` — 71470 supplies 2,735 clips / 10.5 h of clean solo voice (여성소리 ·
+#      남성소리 · 합창). No 71955 counterpart exists, so this group has zero ensemble
+#      material.
+#
+# Provenance
+#   - group_71955 recovered from the 297 label JSONs carrying instrumentMajor tags
+#     (metadata.csv covers all 1,004 songs but has no group column).
+#   - code_71470 recovered by phrase-name mining over all 9,945 label JSONs
+#     (`phrs_nm_kor` + `music_nm_kor`); every code except WN05 confirmed by direct name
+#     match, not by count-matching.
+#   - `방울` never appears in the 297 tagged songs — group inferred (marked below).
+
+instruments:
+
+  # ============================================================================
+  # PRESENT IN 71955 — assigned to the 10 working groups
+  # ============================================================================
+
+  # --- the six single-instrument melodic groups ---
+  피리:      {stem_group: 피리,     pitched: true,  group_71955: 피리,   code_71470: WR01}
+  대금:      {stem_group: 대금,     pitched: true,  group_71955: 대금,   code_71470: WN01}
+  해금:      {stem_group: 해금,     pitched: true,  group_71955: 해금,   code_71470: SR01}
+  아쟁:      {stem_group: 아쟁,     pitched: true,  group_71955: 아쟁,   code_71470: SR02}
+  가야금:    {stem_group: 가야금,   pitched: true,  group_71955: 가야금, code_71470: SP01}
+  거문고:    {stem_group: 거문고,   pitched: true,  group_71955: 거문고, code_71470: SP02}
+
+  # --- 양금: publisher's own top-level group, preserved as-is (see deviation note) ---
+  양금:      {stem_group: 양금,     pitched: true,  group_71955: 양금,   code_71470: PT01}
+
+  # --- 기타 ("other"): the publisher's catch-all — four pitched winds, no percussion ---
+  소금:      {stem_group: 기타,     pitched: true,  group_71955: 기타,   code_71470: WN02}
+  단소:      {stem_group: 기타,     pitched: true,  group_71955: 기타,   code_71470: WN03}
+  태평소:    {stem_group: 기타,     pitched: true,  group_71955: 기타,   code_71470: WR02}
+  생황:      {stem_group: 기타,     pitched: true,  group_71955: 기타,   code_71470: WR03}
+
+  # --- pitched_percussion: split out of 타악기 (the one deviation) ---
+  #     All three occur in exactly the same 17 궁중음악 songs; 0.94 h each.
+  편종:      {stem_group: pitched_percussion, pitched: true, group_71955: 타악기, code_71470: PT02}
+  편경:      {stem_group: pitched_percussion, pitched: true, group_71955: 타악기, code_71470: PT03}
+  방향:      {stem_group: pitched_percussion, pitched: true, group_71955: 타악기, code_71470: null}
+
+  # --- 타악기: unpitched percussion only, after the split-out above ---
+  장구:      {stem_group: 타악기,   pitched: false, group_71955: 타악기, code_71470: PN01}
+  소리북:    {stem_group: 타악기,   pitched: false, group_71955: 타악기, code_71470: null}
+  북:        {stem_group: 타악기,   pitched: false, group_71955: 타악기, code_71470: PN03}
+  좌고:      {stem_group: 타악기,   pitched: false, group_71955: 타악기, code_71470: null}
+  대고:      {stem_group: 타악기,   pitched: false, group_71955: 타악기, code_71470: null}
+  바라:      {stem_group: 타악기,   pitched: false, group_71955: 타악기, code_71470: null}
+  꽹과리:    {stem_group: 타악기,   pitched: false, group_71955: 타악기, code_71470: PN02}
+  박:        {stem_group: 타악기,   pitched: false, group_71955: 타악기, code_71470: null}
+  목탁:      {stem_group: 타악기,   pitched: false, group_71955: 타악기, code_71470: PN06}
+  # 방울 absent from the 297 tagged songs — publisher group INFERRED, not observed.
+  방울:      {stem_group: 타악기,   pitched: false, group_71955: 타악기, code_71470: null}
+
+  # ============================================================================
+  # PRESENT ONLY IN 71470 — voice (new group, no 71955 counterpart by definition)
+  # ============================================================================
+  여성소리:  {stem_group: voice,    pitched: true,  group_71955: null,   code_71470: VF01}
+  남성소리:  {stem_group: voice,    pitched: true,  group_71955: null,   code_71470: VM02}
+  합창:      {stem_group: voice,    pitched: true,  group_71955: null,   code_71470: VH03}
+
+  # ============================================================================
+  # HELD ASIDE — stem_group DELIBERATELY null, decision deferred.
+  #
+  # None of these has a 71955 counterpart, so no assignment follows from the ensemble
+  # scheme. Each will be resolved by expert consultation + listening + lit review; the
+  # outcome per instrument is either (a) fold into an existing group, or (b) a new
+  # others/misc group. 222 clips total — see docs/stem_taxonomy.md §6.
+  # ============================================================================
+
+  # --- 문묘제례악 ritual instruments (Confucian rite; ~single-digit clip counts) ---
+  금:        {stem_group: null,     pitched: true,  group_71955: null,   code_71470: SP05}
+  슬:        {stem_group: null,     pitched: true,  group_71955: null,   code_71470: SP06}
+  지:        {stem_group: null,     pitched: true,  group_71955: null,   code_71470: WN06}
+  소:        {stem_group: null,     pitched: true,  group_71955: null,   code_71470: WN07}
+  축:        {stem_group: null,     pitched: false, group_71955: null,   code_71470: PN10}
+  어:        {stem_group: null,     pitched: false, group_71955: null,   code_71470: PN11}
+
+  # --- percussion with no 71955 counterpart ---
+  징:        {stem_group: null,     pitched: false, group_71955: null,   code_71470: PN04}
+  소고:      {stem_group: null,     pitched: false, group_71955: null,   code_71470: PN08}
+  정주:      {stem_group: null,     pitched: false, group_71955: null,   code_71470: PN09}
+  종:        {stem_group: null,     pitched: false, group_71955: null,   code_71470: PN07}
+
+  # --- winds with no 71955 counterpart ---
+  퉁소:      {stem_group: null,     pitched: true,  group_71955: null,   code_71470: WN04}
+  # 나발/나각 are lip-blown 대취타 signalling horns — near-fixed-pitch, 1 clip each.
+  나발:      {stem_group: null,     pitched: true,  group_71955: null,   code_71470: WR04}
+  나각:      {stem_group: null,     pitched: true,  group_71955: null,   code_71470: WR05}
+
+  # --- unresolved: 3 clips, all with empty phrs_nm_kor — no evidence to name it ---
+  미상_WN05: {stem_group: null,     pitched: true,  group_71955: null,   code_71470: WN05}
