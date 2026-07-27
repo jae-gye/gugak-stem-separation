@@ -14,8 +14,10 @@ This file is intentionally roadmap-free so it can't drift out of sync the way it
   (https://app.notion.com/p/3a4cb377874381368f9ac2bc24ef8269).
   Child pages: **Experiments** `3a4cb377-8743-8012-921b-e6174eb0effb` ·
   **Survey** `3a4cb377-8743-8075-932e-ca518395c3e1`.
-- **Keep it live:** update the Notion page in the SAME turn a plan changes, an item completes, or
-  a decision is made. (The old CLAUDE.md-as-living-planner discipline now applies to Notion.)
+- **Notion gets the git treatment — it's the project brain, keep me on top of edits to it:** when a
+  plan changes, an item completes, or a decision is made, **flag in the same turn that Notion needs
+  updating and propose the edit — but do NOT write to Notion until I confirm.** Confirming a Notion
+  edit is its own go-ahead, separate from any git confirmation.
 - **On any conflict, Notion wins** — it is the newer, authoritative plan. This file may lag on
   anything plan-shaped; trust Notion for that, trust this file for stable facts/conventions.
 - **Single-copy rule:** every fact has exactly one home. Anything plan-shaped, or already stated in
@@ -44,7 +46,8 @@ Remove this block once the power-off has passed.
 - **Audio I/O:** use `soundfile` (handles float wavs; stdlib `wave` chokes on them).
   **Avoid `librosa`** — lab convention.
 
-## Datasets  (full status → `docs/dataset_status.md`; counts/tables → Notion)
+## Datasets  (full status → `docs/dataset_status.md`; instrument taxonomy →
+`docs/stem_taxonomy.md` + canonical mapping `configs/stem_taxonomy.yaml`; counts/tables → Notion)
 - **71955 (ensemble, ours-for-everything):** **903 songs** with audio (published 1,004 minus the 101
   withheld-test songs); 1 master + N stems each; **6,670 WAVs**. 48 kHz / 24-bit / stereo,
   **except 130 files at 96 kHz** (창작국악 → resample).
@@ -56,10 +59,15 @@ Remove this block once the power-off has passed.
     `<song>_master.wav` + `<song>_<instrument>.wav`; tagging JSONs in `labels/`.
     Publisher train/val folders were flattened away (we use our own split).
   - `data/gugak_solo_71470/` → `~/storage/ngc-gugak` — flat `audio/` · `midi/` · `labels/`.
-- **Manifest = source of truth when present** (never walk directories). ⚠️ The previous manifest,
-  its seed-42 split, and the old builder (`src/data/build_manifest.py`) were **removed 2026-07-24**
-  pending a rebuild that folds in the 71470 pool — **there is currently no frozen manifest and no
-  builder**; the rebuild/split plan and fresh spec live in Notion.
+- **Manifests = source of truth** (never walk directories). All live in `manifests/`:
+  - `eval_manifest` — frozen 71955 song-level split (`src/data/data_splitter.py`).
+  - `ingest_manifest` — one row per ingested file: provenance + ops applied (`src/data/ingest.py`).
+  - `audio_qc*` — QC scans: `audio_qc` = raw sources, `audio_qc_ingest_<set>` = processed store
+    (`scripts/audio_qc.py`). `audio_qc.parquet` is the channel-decision table ingest consumes.
+  - **`source_manifest` = the one dataloaders read** — ingest ⋈ QC ⋈ taxonomy, one row per
+    ingested source file, keyed by stable `file_id` (`src/data/build_source_manifest.py`).
+    The pitch-shift pool will be a SEPARATE table at (source × semitone) grain, foreign-keying
+    here — it must not re-copy split/instrument/content columns.
 - **Split principle** (publisher's split CSVs/folders are inconsistent & incomplete — ignored):
   own song-level split, stratified by genreSub, seed-pinned, no song crossing splits. Test + val
   are frozen 71955 song lists; the training side is **generated augmented mixes, not a song-count
@@ -78,8 +86,10 @@ Remove this block once the power-off has passed.
   on the Σstem variant only** — master-val carries an irreducible error floor (the mastering
   residual), which muddies curves and early-stop signals. Master-val is a real-world reference,
   never model selection. Rationale → Notion.
-- **Audio QC — full scan done 2026-07-25** (`scripts/audio_qc.py` → `data/eda/audio_qc.*`, both
-  sets; findings → Notion). Standing rules from it:
+- **Audio QC — raw sources scanned 2026-07-25, processed store verified 2026-07-27**
+  (`scripts/audio_qc.py` → `manifests/audio_qc*.parquet`, both sets; findings → Notion).
+  Ingest verification: 16,615/16,615 files at 44.1k/PCM_24, 0 peaks >1.0, 0 dead, 0 anti-phase or
+  dual-mono survivors, duration conserved 465.38 h. Standing rules from the raw scan:
   - **Sparse ≠ dead** — do NOT auto-drop low-activity stems (박 etc. play rarely by design).
   - Normalize the mixture, never per-stem (loudness ~−19 LUFS in 71955).
   - 71470 ingest: clamp/normalize peaks >1.0, DC-remove, and do **not** naive-average L/R to mono
@@ -104,31 +114,15 @@ Remove this block once the power-off has passed.
   number, e.g. `exp001_260722_htdemucs_4stem`). Track parquet/csv/md; figures are gitignored
   (regenerable from tracked metrics + script). Full convention → `experiments/README.md`.
 - Log git commit hash + full config to wandb for every run.
-- Manifests, not directory walking. Split frozen in the manifest; commit it. Never let chunks of one
+- Manifests, not directory walking. Split frozen in the manifest; commit the **parquet** (source of
+  truth). Its **CSV twin is not auto-committed — surface the file size and let me decide** per case
+  (small diff-able → commit both; large → parquet-only + gitignore the csv). Never let chunks of one
   song cross splits (audio leakage).
 - Notebooks (`notebooks/`) = EDA only.
 
 ## Commits
 - Format + tag taxonomy → **`git-commit` skill.** No repo-specific tag overrides currently.
 - **NEVER commit or push without explicit confirmation** (global rule; restated because it matters).
-
-## Repo Structure
-```
-configs/     one YAML per experiment
-src/data/    dataset class, mixing/augmentation, audio utils (manifest builder: to be rewritten)
-src/models/  MSST wrappers (later: custom models)
-scripts/     data acquisition / extraction / QC one-offs
-notebooks/   EDA only
-experiments/ per-experiment LIGHT artifacts (metrics parquet+csv + notes) — committed;
-             figures gitignored (regenerable). Convention → experiments/README.md
-manifests/   frozen manifest (songs/stems parquet+csv) when built — committed;
-             currently EMPTY (rebuild + fresh spec → Notion)
-docs/        status page & write-ups
-data/        real dir, one symlink per set (not tracked):
-             gugak_ensemble_71955/ -> ~/storage/nia-gugak
-             gugak_solo_71470/     -> ~/storage/ngc-gugak
-external/    ZFTurbo MSST repo (submodule `external/msst`, pinned)
-```
 
 ## Modeling tooling
 - **MSST-first:** wrap ZFTurbo/Music-Source-Separation-Training. Config-driven HTDemucs,
