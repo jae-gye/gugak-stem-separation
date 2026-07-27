@@ -20,7 +20,7 @@ antiphase_corr: -0.5        # stereo corr <= this  -> anti-phase, keep one chann
 keep_channel: 0             # which channel to keep when collapsing (0 = left)
 
 # --- inputs (source-of-truth tables; never walk directories) ---
-qc_parquet: data/eda/audio_qc.parquet          # full per-file scan drives channel decisions
+qc_parquet: manifests/audio_qc.parquet         # full per-file scan drives channel decisions
 eval_manifest: manifests/eval_manifest.parquet # frozen 71955 song-level split (train/val/test)
 
 # --- outputs ---

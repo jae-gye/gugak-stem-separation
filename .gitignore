@@ -13,7 +13,8 @@ __pycache__/
 # --- figs/: generated plots (regenerable from the notebook/scripts that emit them) ---
 figs/*.png
 
-# --- data/eda/: track the parquet (authoritative); csv is a bulky disk-only mirror ---
+# --- data/eda/: QC tables moved to manifests/ (2026-07-27); anything left here is
+#     scratch EDA output, disk-only ---
 data/eda/*.csv
 
 # --- experiment outputs ---
@@ -33,8 +34,15 @@ experiments/**/*.png
 # --- OS / editor ---
 .DS_Store
 
+# --- Claude Code: per-machine settings (permissions, local overrides).
+#     .claude/settings.json (shared, checked in) is NOT ignored — only the local twin. ---
+.claude/settings.local.json
+
 # NOTE: uv.lock IS committed (reproducible env) — do not ignore it.
 # NOTE: manifests/*.parquet ARE committed (frozen splits) — do not ignore them.
-#       CSV twins are committed case-by-case (size call, see CLAUDE.md); the
-#       5 MB ingest_manifest.csv stays on-disk-only for reading, parquet is source.
+#       CSV twins are committed case-by-case (size call, see CLAUDE.md). These are
+#       all 16k-row tables: not meaningfully diff-able, so parquet is the source and
+#       the csv stays on-disk-only for eyeballing.
 manifests/ingest_manifest.csv
+manifests/audio_qc*.csv
+manifests/source_manifest.csv

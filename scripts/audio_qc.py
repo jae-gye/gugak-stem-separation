@@ -179,7 +179,7 @@ def main() -> None:
                     help="decode at most N s/file for content checks (0 = full file)")
     ap.add_argument("--workers", type=int, default=max(1, (Path("/proc/cpuinfo").exists()
                     and __import__("os").cpu_count() or 4) - 2))
-    ap.add_argument("--out", default="data/eda/audio_qc",
+    ap.add_argument("--out", default="manifests/audio_qc",
                     help="output basename (writes .parquet + .csv)")
     ap.add_argument("--limit", type=int, default=0, help="cap files per dataset (for testing)")
     args = ap.parse_args()

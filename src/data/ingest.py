@@ -11,7 +11,7 @@ Training Data Strategy → "Offline ingest"):
     read → channel rule → DC removal → resample(44.1k) → peak clamp → write PCM_24 → manifest row
 
 Design:
-  - The full QC scan (data/eda/audio_qc.parquet) is the per-file DECISION TABLE:
+  - The full QC scan (manifests/audio_qc.parquet) is the per-file DECISION TABLE:
     it already holds sr / subtype / channels / L-R corr for every file, so channel
     decisions reuse the documented QC thresholds instead of re-scanning. We never
     walk directories.
