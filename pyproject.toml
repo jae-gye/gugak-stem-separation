@@ -27,6 +27,7 @@ dependencies = [
     "wandb>=0.28.1",
     "soxr>=1.1.0",
     "pyyaml>=6.0.3",
+    "pedalboard>=0.9.24",
 ]
 
 # Application project (no build-system) -> uv manages the env, does not build the root as a package.
