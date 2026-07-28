@@ -49,3 +49,7 @@ manifests/csv/*
 # --- data/activity/: stage-1 envelope blob (146 MB, regenerable by
 #     src/data/activity_scan.py); the tracked artifacts are the manifests/ tables ---
 /data/activity/
+
+# --- data/mix_smoke/: rendered smoke-test mixes (regenerable by
+#     scripts/smoke_mix_dataset.py, for listening only) ---
+/data/mix_smoke/

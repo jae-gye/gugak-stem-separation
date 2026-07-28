@@ -1,0 +1,53 @@
+# exp001_htdemucs_9stem.yaml — first real training run (spec → Notion, EXP001).
+# HTDemucs fine-tune on incoherent gugak mixes, 9 classes, 71955-only.
+#
+# CURRENT STATE: carries the `gugak_mix` block (dataloader) only. MSST training
+# fields (model, optimizer, loss, step budget) join when the trainer is wired —
+# one experiment = one config = one wandb run.
+
+gugak_mix:
+  # class scheme: publisher's 9, pitched percussion (편종·편경·방향) quarantined —
+  # excluded from training entirely, NOT folded back into 타악기. Order = output slots.
+  classes: [가야금, 거문고, 기타, 대금, 아쟁, 양금, 타악기, 피리, 해금]
+
+  # source pool: ensemble only — 71470 solo pool held back (future ablation)
+  datasets: ["71955"]
+  split: train
+
+  # excerpt geometry: the checkpoint's native training length
+  segment_seconds: 10.0
+  sample_rate: 44100
+
+  # density: n ~ measured audible-편성 distribution (recomputed for the 9 classes
+  # from per-class coverage; n=0 dropped, n=1 kept). Window matches the segment.
+  density_chunk_len_s: 10.0
+  density_coverage_threshold: 0.25
+
+  # live augmentations. EQ is BUILT but OFF for exp001 (decision 2026-07-28) —
+  # future runs flip the two probabilities, no code change.
+  gain_min: 0.25
+  gain_max: 1.25
+  channel_swap_prob: 0.5
+  eq_stem_prob: 0.0
+  eq_mixbus_prob: 0.0
+
+  # mixture normalization: loudnorm mixture+targets by one shared gain to the
+  # dataset-native loudness, then peak-guard
+  target_lufs: -19.0
+  peak_ceiling: 0.99
+
+  seed: 42
+
+  # --- reserved knobs (designed, not implemented — enabling raises) ---
+  coherent_mix_prob: 0.0        # coherent same-song draws + 판소리 trim rule
+  multi_sample: {}              # 타악-2× seam, e.g. {타악기: 2}
+  pitch_pool_manifest: null     # (source × semitone) pool table, post-exp001
+  draw_unit: file               # 'song_base' = summed same-base stems, reserved
+
+# Σstem eval variant (val/test), rendered by src/data/build_sumstem_eval.py in the
+# MSST-native layout (<song>/mixture.flac + <song>/<class>.flac). Classes come from
+# gugak_mix.classes above — train and eval cannot drift. Lives on dataset NVMe.
+sumstem_eval:
+  out_root: data/gugak_ensemble_71955/sumstem_9stem
+  extension: flac
+  subtype: PCM_24
