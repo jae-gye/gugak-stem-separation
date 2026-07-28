@@ -5,9 +5,8 @@
      ~/.claude/CLAUDE.md. Commit format + tags live in the git-commit skill. -->
 
 ## Plan & tracking — Notion is the single source of truth
-The **roadmap, current stage, decision log, and evolving strategy** (stem-class scheme,
-augmentation recipe, experiment queue, survey findings) live **only in Notion** — never here.
-This file is intentionally roadmap-free so it can't drift out of sync the way it did before.
+The **roadmap, current stage, decision log, and evolving strategy** live **in Notion**.
+This file is intentionally roadmap-free so it can't drift out of sync.
 
 - **Fetch at session start, and before any planning/status discussion:** Notion page
   **Gugak Stem Separation** — id `3a4cb377-8743-8136-8f9a-c2bc24ef8269`
@@ -22,13 +21,6 @@ This file is intentionally roadmap-free so it can't drift out of sync the way it
   anything plan-shaped; trust Notion for that, trust this file for stable facts/conventions.
 - **Single-copy rule:** every fact has exactly one home. Anything plan-shaped, or already stated in
   Notion, gets a pointer here — not a copy.
-
-## Project
-Stem separation on traditional Korean music (gugak) multitrack data — AI Hub
-**국악합주곡 디지털 음원 데이터** (datasetkey 71955, ensemble multitracks) plus AI Hub
-**국악 악보 및 음원 데이터** (datasetkey 71470, solo-phrase pool, train-only). First task in the
-MALer lab archiving/cataloguing workstream; also a full experiment-cycle practice run:
-data → baseline → fine-tune → compare → share.
 
 ## sym8 power-off — 2026-08-01 (routine, ~1 day)
 Building maintenance during summer break: **sym8 loses power for ~1 day on 2026-08-01**, back up
@@ -48,16 +40,16 @@ Remove this block once the power-off has passed.
 
 ## Datasets  (full status → `docs/dataset_status.md`; instrument taxonomy →
 `docs/stem_taxonomy.md` + canonical mapping `configs/stem_taxonomy.yaml`; counts/tables → Notion)
+- refer to each dataset as either ensemble dataset or solo dataset rather than their idx.
 - **71955 (ensemble, ours-for-everything):** **903 songs** with audio (published 1,004 minus the 101
   withheld-test songs); 1 master + N stems each; **6,670 WAVs**. 48 kHz / 24-bit / stereo,
-  **except 130 files at 96 kHz** (창작국악 → resample).
+  **except 130 files at 96 kHz** (창작국악 → resampled).
 - **71470 (solo phrases, train-only pool):** ~9,945 usable single-instrument clips + per-clip MIDI
   (악보) and annotations. **Format-heterogeneous** — 15 (sr, bit, ch) combos incl. float wavs,
-  clips ~1–78 s → resample + unify channel/bit on ingest.
+  clips ~1–78 s → resampled + unified channel/bit on ingest.
 - **On disk:** `data/` is a real directory holding one symlink per set:
   - `data/gugak_ensemble_71955/` → `~/storage/nia-gugak` — `source/<song>/` =
     `<song>_master.wav` + `<song>_<instrument>.wav`; tagging JSONs in `labels/`.
-    Publisher train/val folders were flattened away (we use our own split).
   - `data/gugak_solo_71470/` → `~/storage/ngc-gugak` — flat `audio/` · `midi/` · `labels/`.
 - **Manifests = source of truth** (never walk directories). All live in `manifests/`:
   - `eval_manifest` — frozen 71955 song-level split (`src/data/data_splitter.py`).
