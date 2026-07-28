@@ -12,7 +12,8 @@ Principles (see Notion · Dataset 1 / Training Data Strategy):
   - seed-pinned + frozen -> reproducible; committed to manifests/ as the source of truth
 
 Genre comes from metadata.csv (source of truth), joined to the on-disk song dirs by
-NFC-normalized name. Output: manifests/eval_manifest.{parquet,csv}.
+NFC-normalized name. Output: manifests/parquet/eval_manifest.parquet +
+manifests/csv/eval_manifest.csv.
 
 Run:  uv run python src/data/data_splitter.py [--val-frac 0.10 --test-frac 0.15 --seed 42]
 """
@@ -49,6 +50,22 @@ def find_root(start: Path | None = None) -> Path:
         if (cand / "pyproject.toml").exists():
             return cand
     raise FileNotFoundError("repo root (pyproject.toml) not found above cwd")
+
+
+def table_paths(base: Path) -> tuple[Path, Path]:
+    """Map a manifests/<name> basename to its (parquet, csv) twin paths.
+
+    Layout rule (repo-wide): parquet = source of truth in manifests/parquet/,
+    csv = eyeball copy in manifests/csv/. Both dirs are created on demand.
+
+    Args:
+        base: table basename, e.g. Path(".../manifests/eval_manifest").
+    """
+    parquet = base.parent / "parquet" / f"{base.name}.parquet"
+    csv = base.parent / "csv" / f"{base.name}.csv"
+    parquet.parent.mkdir(parents=True, exist_ok=True)
+    csv.parent.mkdir(parents=True, exist_ok=True)
+    return parquet, csv
 
 
 def load_songs(root: Path) -> pd.DataFrame:
@@ -128,13 +145,12 @@ def main() -> None:
     root = find_root()
     df = build(root, args.val_frac, args.test_frac, args.seed)
 
-    out = root / (args.out or OUT_BASENAME)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    df.to_parquet(out.with_suffix(".parquet"), index=False)
-    df.to_csv(out.with_suffix(".csv"), index=False)
+    out_parquet, out_csv = table_paths(root / (args.out or OUT_BASENAME))
+    df.to_parquet(out_parquet, index=False)
+    df.to_csv(out_csv, index=False)
     print(f"seed={args.seed}  val_frac={args.val_frac}  test_frac={args.test_frac}")
     report(df)
-    print(f"\nwrote {out}.parquet + .csv")
+    print(f"\nwrote {out_parquet} + {out_csv}")
 
 
 if __name__ == "__main__":

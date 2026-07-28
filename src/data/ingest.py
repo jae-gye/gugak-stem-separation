@@ -11,7 +11,7 @@ Training Data Strategy → "Offline ingest"):
     read → channel rule → DC removal → resample(44.1k) → peak clamp → write PCM_24 → manifest row
 
 Design:
-  - The full QC scan (manifests/audio_qc.parquet) is the per-file DECISION TABLE:
+  - The full QC scan (manifests/parquet/audio_qc.parquet) is the per-file DECISION TABLE:
     it already holds sr / subtype / channels / L-R corr for every file, so channel
     decisions reuse the documented QC thresholds instead of re-scanning. We never
     walk directories.
@@ -59,6 +59,22 @@ def find_root(start: Path | None = None) -> Path:
 def nfc(s: str) -> str:
     """NFC-normalize a Korean string (disk names vs CSV must match on join)."""
     return unicodedata.normalize("NFC", str(s))
+
+
+def table_paths(base: Path) -> tuple[Path, Path]:
+    """Map a manifests/<name> basename to its (parquet, csv) twin paths.
+
+    Layout rule (repo-wide): parquet = source of truth in manifests/parquet/,
+    csv = eyeball copy in manifests/csv/. Both dirs are created on demand.
+
+    Args:
+        base: table basename, e.g. Path(".../manifests/ingest_manifest").
+    """
+    parquet = base.parent / "parquet" / f"{base.name}.parquet"
+    csv = base.parent / "csv" / f"{base.name}.csv"
+    parquet.parent.mkdir(parents=True, exist_ok=True)
+    csv.parent.mkdir(parents=True, exist_ok=True)
+    return parquet, csv
 
 
 # --- config -----------------------------------------------------------------
@@ -346,9 +362,9 @@ def write_manifest(rows: list[dict], cfg: IngestConfig) -> pd.DataFrame:
         if c not in df.columns:
             df[c] = None
     df = df[_COLS].sort_values(["dataset", "role", "src_path"]).reset_index(drop=True)
-    cfg.out_manifest.parent.mkdir(parents=True, exist_ok=True)
-    df.to_parquet(cfg.out_manifest.with_suffix(".parquet"), index=False)
-    df.to_csv(cfg.out_manifest.with_suffix(".csv"), index=False)
+    out_parquet, out_csv = table_paths(cfg.out_manifest)
+    df.to_parquet(out_parquet, index=False)
+    df.to_csv(out_csv, index=False)
     return df
 
 
@@ -409,7 +425,8 @@ def main() -> None:
 
     df = write_manifest(rows, cfg)
     report(df)
-    print(f"\nwrote {cfg.out_manifest}.parquet + .csv")
+    out_parquet, out_csv = table_paths(cfg.out_manifest)
+    print(f"\nwrote {out_parquet} + {out_csv}")
 
 
 if __name__ == "__main__":

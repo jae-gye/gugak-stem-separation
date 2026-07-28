@@ -47,6 +47,22 @@ DATASETS: dict[str, dict] = {
 }
 
 
+def table_paths(base: Path) -> tuple[Path, Path]:
+    """Map a manifests/<name> basename to its (parquet, csv) twin paths.
+
+    Layout rule (repo-wide): parquet = source of truth in manifests/parquet/,
+    csv = eyeball copy in manifests/csv/. Both dirs are created on demand.
+
+    Args:
+        base: table basename, e.g. Path("manifests/audio_qc").
+    """
+    parquet = base.parent / "parquet" / f"{base.name}.parquet"
+    csv = base.parent / "csv" / f"{base.name}.csv"
+    parquet.parent.mkdir(parents=True, exist_ok=True)
+    csv.parent.mkdir(parents=True, exist_ok=True)
+    return parquet, csv
+
+
 # ---------- individual checks (operate on plain data, so they're unit-testable) ----------
 def header_metrics(path: Path) -> dict:
     """Cheap header read — no audio decode."""
@@ -180,7 +196,7 @@ def main() -> None:
     ap.add_argument("--workers", type=int, default=max(1, (Path("/proc/cpuinfo").exists()
                     and __import__("os").cpu_count() or 4) - 2))
     ap.add_argument("--out", default="manifests/audio_qc",
-                    help="output basename (writes .parquet + .csv)")
+                    help="output basename (writes parquet/<name>.parquet + csv/<name>.csv)")
     ap.add_argument("--limit", type=int, default=0, help="cap files per dataset (for testing)")
     args = ap.parse_args()
 
@@ -200,11 +216,10 @@ def main() -> None:
                 print(f"  {done:,}/{len(tasks):,}", flush=True)
 
     df = pd.DataFrame(records)
-    out = Path(args.out)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    df.to_parquet(out.with_suffix(".parquet"), index=False)
-    df.to_csv(out.with_suffix(".csv"), index=False)
-    print(f"\nwrote {out}.parquet + .csv  ({len(df):,} rows)")
+    out_parquet, out_csv = table_paths(Path(args.out))
+    df.to_parquet(out_parquet, index=False)
+    df.to_csv(out_csv, index=False)
+    print(f"\nwrote {out_parquet} + {out_csv}  ({len(df):,} rows)")
     summarize(df)
 
 

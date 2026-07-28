@@ -53,6 +53,8 @@ peak clamp → channel rule → PCM_24. Recipe + rationale → Notion.
 
 ## Manifests (`manifests/` — source of truth, never walk directories)
 
+Layout: `manifests/parquet/<table>.parquet` (source of truth, committed) + `manifests/csv/<table>.csv` (eyeball twin, written for every table).
+
 | File | Grain | Built by |
 |---|---|---|
 | `eval_manifest` | one row per 71955 song | `src/data/data_splitter.py` |
@@ -63,7 +65,7 @@ peak clamp → channel rule → PCM_24. Recipe + rationale → Notion.
 `source_manifest` = ingest ⋈ QC ⋈ taxonomy, keyed by stable `file_id`. The pitch-shift pool
 will be a **separate** table at (source × semitone) grain, foreign-keying into it.
 
-Parquet is committed; CSV twins are disk-only (gitignored, not diff-able at 16k rows).
+Parquet is committed; CSV twins are disk-only (gitignored, not diff-able at 16k+ rows) except the small diff-able ones (`eval_manifest`, `activity_summary`).
 
 ## Key gotchas
 

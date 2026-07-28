@@ -24,7 +24,7 @@ Method notes:
 
 Output:
   data/activity/envelopes.npy    flat float32 dBFS, all files concatenated (~146 MB)
-  manifests/activity_index.parquet   file_id -> offset, n_blocks, block_s, sr
+  manifests/parquet/activity_index.parquet   file_id -> offset, n_blocks, block_s, sr
 
 Run:
     uv run python src/data/activity_scan.py --config configs/activity_scan.yaml
@@ -55,6 +55,22 @@ def find_root(start: Path | None = None) -> Path:
         if (cand / "pyproject.toml").exists():
             return cand
     raise FileNotFoundError("repo root (pyproject.toml) not found above cwd")
+
+
+def table_paths(base: Path) -> tuple[Path, Path]:
+    """Map a manifests/<name> basename to its (parquet, csv) twin paths.
+
+    Layout rule (repo-wide): parquet = source of truth in manifests/parquet/,
+    csv = eyeball copy in manifests/csv/. Both dirs are created on demand.
+
+    Args:
+        base: table basename, e.g. Path(".../manifests/activity_index").
+    """
+    parquet = base.parent / "parquet" / f"{base.name}.parquet"
+    csv = base.parent / "csv" / f"{base.name}.csv"
+    parquet.parent.mkdir(parents=True, exist_ok=True)
+    csv.parent.mkdir(parents=True, exist_ok=True)
+    return parquet, csv
 
 
 # --- config -----------------------------------------------------------------
@@ -202,9 +218,9 @@ def write_outputs(rows: list[dict], cfg: ActivityScanConfig) -> pd.DataFrame:
     np.save(cfg.envelope_dir / "envelopes.npy", blob)
 
     index = pd.DataFrame(index_rows)
-    cfg.out_index.parent.mkdir(parents=True, exist_ok=True)
-    index.to_parquet(cfg.out_index.with_suffix(".parquet"), index=False)
-    index.to_csv(cfg.out_index.with_suffix(".csv"), index=False)
+    index_parquet, index_csv = table_paths(cfg.out_index)
+    index.to_parquet(index_parquet, index=False)
+    index.to_csv(index_csv, index=False)
     return index
 
 
@@ -302,7 +318,8 @@ def main() -> None:
 
     index = write_outputs(rows, cfg)
     report(index, cfg, time.time() - start)
-    print(f"\nwrote {cfg.envelope_dir / 'envelopes.npy'} + {cfg.out_index}.parquet/.csv")
+    index_parquet, index_csv = table_paths(cfg.out_index)
+    print(f"\nwrote {cfg.envelope_dir / 'envelopes.npy'} + {index_parquet} + {index_csv}")
 
 
 if __name__ == "__main__":

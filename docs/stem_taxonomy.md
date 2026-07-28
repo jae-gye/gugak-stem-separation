@@ -5,7 +5,7 @@ Human-facing reference for how instruments map across the two datasets.
 that file is the single source of truth; the tables here are its readable rendering.
 `src/data/build_source_manifest.py` reads the YAML and stamps `instrument_canonical`,
 `stem_group`, `pitched`, and `instrument_group_71955` onto every row of
-`manifests/source_manifest.parquet`.
+`manifests/parquet/source_manifest.parquet`.
 
 > ⚠️ **Working scheme, not final.** This is the publisher's grouping plus two deliberate
 > additions. It is revisited after the taxonomy lit review, and again with the prof

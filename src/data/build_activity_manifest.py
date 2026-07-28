@@ -6,7 +6,7 @@ the scanner deliberately avoided lives HERE — what counts as playing, what cou
 rest, what a training excerpt actually hears. Touches no audio, so a full run takes
 seconds and re-running after a threshold change is free.
 
-Outputs (all under manifests/):
+Outputs (parquet source-of-truth under manifests/parquet/, csv twins under manifests/csv/):
   activity_segments   one row per continuous playing stretch of every file
   activity_summary    per stem_group x genre x split: hours, active fraction,
                       stretch/rest length percentiles (the pitch-shift-skip evidence)
@@ -50,6 +50,22 @@ def find_root(start: Path | None = None) -> Path:
         if (cand / "pyproject.toml").exists():
             return cand
     raise FileNotFoundError("repo root (pyproject.toml) not found above cwd")
+
+
+def table_paths(base: Path) -> tuple[Path, Path]:
+    """Map a manifests/<name> basename to its (parquet, csv) twin paths.
+
+    Layout rule (repo-wide): parquet = source of truth in manifests/parquet/,
+    csv = eyeball copy in manifests/csv/. Both dirs are created on demand.
+
+    Args:
+        base: table basename, e.g. Path(".../manifests/activity_segments").
+    """
+    parquet = base.parent / "parquet" / f"{base.name}.parquet"
+    csv = base.parent / "csv" / f"{base.name}.csv"
+    parquet.parent.mkdir(parents=True, exist_ok=True)
+    csv.parent.mkdir(parents=True, exist_ok=True)
+    return parquet, csv
 
 
 # --- config -----------------------------------------------------------------
@@ -310,8 +326,8 @@ def build_chunks(intervals: dict, index: pd.DataFrame, manifest: pd.DataFrame,
                 for g in all_groups:
                     row[f"cov_{g}"] = round(float(cov[g][w]), 4) if g in cov else 0.0
                 for t in cfg.coverage_thresholds:
-                    n_present = sum(1 for g in cov if cov[g][w] > t)
-                    row[f"n_present_gt{int(t * 100):02d}"] = n_present
+                    n_active = sum(1 for g in cov if cov[g][w] > t)
+                    row[f"n_active_gt{int(t * 100):02d}"] = n_active
                 rows.append(row)
     return pd.DataFrame(rows)
 
@@ -338,7 +354,7 @@ def report(segments: pd.DataFrame, summary: pd.DataFrame, chunks: pd.DataFrame) 
     for L in sorted(chunks.chunk_len_s.unique()):
         sub = chunks[chunks.chunk_len_s == L]
         print(f"  {L:>4.0f} s windows: designed 편성 mean {sub.n_classes_song.mean():.2f} "
-              f"→ audible mean {sub.n_present_gt25.mean():.2f} (coverage >25%)")
+              f"→ audible mean {sub.n_active_gt25.mean():.2f} (coverage >25%)")
 
 
 def main() -> None:
@@ -349,7 +365,7 @@ def main() -> None:
 
     root = find_root()
     cfg = ActivityManifestConfig.load(root / args.config, root)
-    index = pd.read_parquet(cfg.out_index.with_suffix(".parquet"))
+    index = pd.read_parquet(table_paths(cfg.out_index)[0])
     blob = np.load(cfg.envelope_dir / "envelopes.npy", mmap_mode="r")
     manifest = pd.read_parquet(cfg.source_manifest)
     print(f"config={args.config}  files={len(index):,}  "
@@ -368,11 +384,10 @@ def main() -> None:
         return
     for frame, out in [(segments, cfg.out_segments), (summary, cfg.out_summary),
                        (chunks, cfg.out_chunks)]:
-        out.parent.mkdir(parents=True, exist_ok=True)
-        frame.to_parquet(out.with_suffix(".parquet"), index=False)
-    summary.to_csv(cfg.out_summary.with_suffix(".csv"), index=False)  # tiny → csv twin
-    print(f"\nwrote {cfg.out_segments}.parquet · {cfg.out_summary}.parquet/.csv · "
-          f"{cfg.out_chunks}.parquet")
+        out_parquet, out_csv = table_paths(out)
+        frame.to_parquet(out_parquet, index=False)
+        frame.to_csv(out_csv, index=False)
+        print(f"wrote {out_parquet} + {out_csv}")
 
 
 if __name__ == "__main__":

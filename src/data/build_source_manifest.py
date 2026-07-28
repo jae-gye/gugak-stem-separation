@@ -1,11 +1,12 @@
 """build_source_manifest.py — merge the ingest manifest with the ingest-store QC scan.
 
-Produces `manifests/source_manifest.{parquet,csv}`: ONE ROW PER INGESTED SOURCE FILE,
-carrying everything a dataloader or an offline stage needs about that file —
+Produces `manifests/parquet/source_manifest.parquet` (+ csv twin in `manifests/csv/`):
+ONE ROW PER INGESTED SOURCE FILE, carrying everything a dataloader or an offline stage
+needs about that file —
 
-    provenance + ops   (from manifests/ingest_manifest.parquet)
+    provenance + ops   (from manifests/parquet/ingest_manifest.parquet)
     split              (frozen 71955 song-level split, already denormalized by ingest)
-    content metrics    (from manifests/audio_qc_ingest_*.parquet — active_frac, rms,
+    content metrics    (from manifests/parquet/audio_qc_ingest_*.parquet — active_frac, rms,
                         lr_corr, dead, clip_frac, dc_offset, peak)
     taxonomy           (from configs/stem_taxonomy.yaml — canonical instrument name,
                         working stem group, pitched flag, publisher 9-class group)
@@ -44,9 +45,9 @@ import pandas as pd
 import yaml
 
 # --- inputs (repo-relative; every path overridable on the CLI) ---
-INGEST_MANIFEST = "manifests/ingest_manifest.parquet"
-QC_INGEST = ["manifests/audio_qc_ingest_71955.parquet",
-             "manifests/audio_qc_ingest_71470.parquet"]
+INGEST_MANIFEST = "manifests/parquet/ingest_manifest.parquet"
+QC_INGEST = ["manifests/parquet/audio_qc_ingest_71955.parquet",
+             "manifests/parquet/audio_qc_ingest_71470.parquet"]
 
 # --- QC columns worth carrying; the rest (sr/subtype/channels/frames/duration) already
 #     live in the ingest manifest as out_* and would just duplicate ---
@@ -61,6 +62,22 @@ def find_root(start: Path | None = None) -> Path:
         if (cand / "pyproject.toml").exists():
             return cand
     raise FileNotFoundError("repo root (pyproject.toml) not found above cwd")
+
+
+def table_paths(base: Path) -> tuple[Path, Path]:
+    """Map a manifests/<name> basename to its (parquet, csv) twin paths.
+
+    Layout rule (repo-wide): parquet = source of truth in manifests/parquet/,
+    csv = eyeball copy in manifests/csv/. Both dirs are created on demand.
+
+    Args:
+        base: table basename, e.g. Path(".../manifests/source_manifest").
+    """
+    parquet = base.parent / "parquet" / f"{base.name}.parquet"
+    csv = base.parent / "csv" / f"{base.name}.csv"
+    parquet.parent.mkdir(parents=True, exist_ok=True)
+    csv.parent.mkdir(parents=True, exist_ok=True)
+    return parquet, csv
 
 
 def nfc(value: object) -> object:
@@ -208,11 +225,10 @@ def main() -> None:
         print("\n[dry-run] nothing written")
         return
 
-    out = root / args.out
-    out.parent.mkdir(parents=True, exist_ok=True)
-    frame.to_parquet(out.with_suffix(".parquet"), index=False)
-    frame.to_csv(out.with_suffix(".csv"), index=False)
-    print(f"\nwrote {out}.parquet + .csv")
+    out_parquet, out_csv = table_paths(root / args.out)
+    frame.to_parquet(out_parquet, index=False)
+    frame.to_csv(out_csv, index=False)
+    print(f"\nwrote {out_parquet} + {out_csv}")
 
 
 if __name__ == "__main__":

@@ -42,11 +42,11 @@ chunk_lengths_s: [3.0, 6.0, 8.0, 10.0]
 coverage_thresholds: [0.0, 0.25, 0.5]   # min fraction of the window a class must be active
 
 # --- inputs (source-of-truth tables; never walk directories) ---
-source_manifest: manifests/source_manifest.parquet
+source_manifest: manifests/parquet/source_manifest.parquet
 
 # --- outputs ---
 # The envelope blob is a regenerable binary (~146 MB) -> lives under data/, gitignored.
-# Everything tabular lands in manifests/ as parquet (+ csv where small enough to diff).
+# Tables are BASENAMES: writers land parquet in manifests/parquet/ + csv in manifests/csv/.
 envelope_dir: data/activity
 out_index: manifests/activity_index          # file_id -> offset/length into the blob
 out_segments: manifests/activity_segments    # one row per contiguous active stretch

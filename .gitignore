@@ -39,14 +39,12 @@ experiments/**/*.png
 .claude/settings.local.json
 
 # NOTE: uv.lock IS committed (reproducible env) — do not ignore it.
-# NOTE: manifests/*.parquet ARE committed (frozen splits) — do not ignore them.
-#       CSV twins are committed case-by-case (size call, see CLAUDE.md). These are
-#       all 16k-row tables: not meaningfully diff-able, so parquet is the source and
-#       the csv stays on-disk-only for eyeballing.
-manifests/ingest_manifest.csv
-manifests/audio_qc*.csv
-manifests/source_manifest.csv
-manifests/activity_index.csv
+# NOTE: manifests/parquet/ IS committed (source of truth, frozen splits) — never ignore.
+#       manifests/csv/ = eyeball twins: ignored by default (100k-row tables are not
+#       meaningfully diff-able), small diff-able tables whitelisted below.
+manifests/csv/*
+!manifests/csv/eval_manifest.csv
+!manifests/csv/activity_summary.csv
 
 # --- data/activity/: stage-1 envelope blob (146 MB, regenerable by
 #     src/data/activity_scan.py); the tracked artifacts are the manifests/ tables ---

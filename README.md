@@ -19,6 +19,6 @@ src/data/    manifest building, dataset class, mixing
 src/models/  MSST wrappers (later)
 scripts/     data acquisition / extraction one-offs
 notebooks/   EDA only
-manifests/   frozen split + metadata (committed)
+manifests/   source-of-truth tables: parquet/ (committed) + csv/ eyeball twins (mostly disk-only)
 data/        -> symlink to /home/jae.gye/storage/nia-gugak (dataset, not tracked)
 ```
