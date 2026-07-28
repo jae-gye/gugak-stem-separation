@@ -46,3 +46,8 @@ experiments/**/*.png
 manifests/ingest_manifest.csv
 manifests/audio_qc*.csv
 manifests/source_manifest.csv
+manifests/activity_index.csv
+
+# --- data/activity/: stage-1 envelope blob (146 MB, regenerable by
+#     src/data/activity_scan.py); the tracked artifacts are the manifests/ tables ---
+/data/activity/

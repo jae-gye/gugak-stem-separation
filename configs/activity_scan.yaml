@@ -1,0 +1,54 @@
+# activity_scan.yaml — stem activity scan, both stages.
+#
+# Stage 1 (src/data/activity_scan.py)          audio  -> per-block dBFS envelopes
+# Stage 2 (src/data/build_activity_manifest.py) envelopes -> segments + summary + 편성
+#
+# The split exists because stage 1 is I/O-bound over ~397 GB and stage 2 is where every
+# tunable decision lives. Re-thresholding must never require re-reading the audio.
+# See Notion · Data pipeline → "Stem activity scan". Change values here, not code.
+
+# --- envelope resolution (stage 1) ---
+# NON-OVERLAPPING blocks: block RMS is then an exact per-block mean, computed by reshape.
+# Deliberately not a prefix-sum/sliding window — differencing a large running energy sum
+# catastrophically cancels for quiet blocks that follow loud ones, which is precisely the
+# case we must measure correctly. Overlap buys nothing for activity detection.
+block_s: 0.046              # ~46 ms; 2029 samples at 44.1 kHz
+frames_per_read: 1024       # blocks per streamed read (~47 s) — bounds worker memory
+envelope_floor_db: -240.0   # dBFS value written for a digitally-silent block
+
+# --- activity thresholds (stage 2) ---
+# The ingested stems are bimodal: real playing sits well above -50 dBFS and rests are
+# TRUE digital silence (measured medians reach -144 dBFS = 1 LSB of 24-bit). Any value in
+# the -60..-80 dB gap gives the same answer, so this is a safe, insensitive choice.
+# -40 dB is NOT safe: it starts cutting genuinely quiet playing.
+threshold_open_db: -60.0    # a block this loud opens a segment
+threshold_close_db: -70.0   # segment stays open while blocks hold above this (hysteresis)
+
+# --- segment shaping (stage 2) ---
+# Raw thresholding chatters on decaying notes. Gaps shorter than min_gap_s are bridged
+# (a rest between two notes is not a rest in the piece), then runs shorter than
+# min_segment_s are dropped, then release_margin_s extends each end to preserve the
+# decay tail a level threshold always truncates.
+min_gap_s: 0.20
+min_segment_s: 0.10
+release_margin_s: 0.25
+
+# --- chunk-level 편성 (stage 2) ---
+# For every non-overlapping window of each 71955 song: which stem classes are audible.
+# Song-level 편성 (median 7 stems) overstates what a training excerpt actually sees;
+# quantifying that gap is the point. Several lengths so the training segment length
+# stays a free choice, several coverage rules so "audible" is not hard-coded.
+chunk_lengths_s: [3.0, 6.0, 8.0, 10.0]
+coverage_thresholds: [0.0, 0.25, 0.5]   # min fraction of the window a class must be active
+
+# --- inputs (source-of-truth tables; never walk directories) ---
+source_manifest: manifests/source_manifest.parquet
+
+# --- outputs ---
+# The envelope blob is a regenerable binary (~146 MB) -> lives under data/, gitignored.
+# Everything tabular lands in manifests/ as parquet (+ csv where small enough to diff).
+envelope_dir: data/activity
+out_index: manifests/activity_index          # file_id -> offset/length into the blob
+out_segments: manifests/activity_segments    # one row per contiguous active stretch
+out_summary: manifests/activity_summary      # per stem_group x genre x split
+out_chunks: manifests/chunk_activities       # per song x chunk length x window
