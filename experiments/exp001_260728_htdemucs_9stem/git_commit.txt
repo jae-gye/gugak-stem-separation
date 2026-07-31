@@ -1,0 +1,8 @@
+0b0f6fa7a638a2867edf5eaed9d6038a7d49aa0f
+ M configs/exp001_htdemucs_9stem.yaml
+ m external/msst
+ M pyproject.toml
+ M uv.lock
+?? docs/exp001_overnight_report.md
+?? experiments/exp001_260728_htdemucs_9stem/
+?? scripts/init_exp001_checkpoint.py
