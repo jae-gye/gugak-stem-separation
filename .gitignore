@@ -1,5 +1,6 @@
 # --- Python / uv ---
 .venv/
+.env
 __pycache__/
 *.py[cod]
 .ipynb_checkpoints/
@@ -27,9 +28,18 @@ outputs/
 #     generated images so binaries stay out of a public repo ---
 notebooks/*.png
 
-# --- experiments/: track light data (parquet/csv) + notes; never track figures
-#     (regenerable from the tracked metrics + script — keeps binaries out of git) ---
+# --- experiments/ + runs/: track the parquet metrics + notes only.
+#     Figures, rendered audio, and CSV twins are all regenerable from the tracked
+#     parquet plus the script that emitted them, so none of them belong in git.
+#     (Checkpoints are already covered by the `checkpoints/` rule above.) ---
 experiments/**/*.png
+experiments/**/*.csv
+experiments/**/*.wav
+experiments/**/*.flac
+runs/**/*.png
+runs/**/*.csv
+runs/**/*.wav
+runs/**/*.flac
 
 # --- OS / editor ---
 .DS_Store
