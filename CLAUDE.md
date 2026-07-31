@@ -90,6 +90,16 @@ canonical mapping `configs/stem_taxonomy.yaml`; counts/tables → Notion)
 - **Korean filenames need NFC** normalization for any name join. Master naming translation:
   on disk `<song>_master.wav` vs metadata records `<song>.wav`.
 
+### Silence is not zero
+Post-ingest silence is **not** bit-exact zero. DC removal leaves a ±1-LSB residue of
+`1.192e-07` (2⁻²³, one bit of 24-bit depth) at roughly −138 dBFS.
+- Never test for silence with equality (`x == 0`, `np.all(arr == 0)`, hash-against-zeros).
+  Use a tolerance: `np.abs(arr).max() < SILENCE_EPS` or a dBFS floor.
+- Set `SILENCE_EPS` from config, not inline. Anything at or above `1e-6` is safely above
+  the residue and far below every threshold in use (activity scan, −50 dB pool gate).
+- Consequence to expect: identical silent excerpts may hash to *different* values, since
+  the residue differs per file. Group silence by level, never by hash.
+
 ## Repo conventions
 - **Experiment configs:** one per experiment (`configs/*.yaml`) = one wandb run; change
   configs, not code, for hyperparameter variation. Shared/cross-experiment configs
@@ -101,6 +111,15 @@ canonical mapping `configs/stem_taxonomy.yaml`; counts/tables → Notion)
   (e.g. `exp001_260722_htdemucs_4stem`); named one-offs = `<YYMMDD>_<name>`
   (e.g. `260719_zeroshot_baseline`). Track metrics (parquet/md); figures gitignored
   (regenerable from tracked metrics + script).
+- **wandb:** cloud target is entity `maler-gye`, project `gugak_stem_separation`, set in
+  `.env` (untracked) — never hardcoded, never by editing the MSST submodule (MSST's
+  hardcoded `project='msst'` is overridden by `WANDB_PROJECT`). **Every launch script must
+  source it before training:** `set -a; source .env; set +a` — nothing loads `.env`
+  automatically. `--wandb_offline` controls *streaming only*: wandb always writes the local
+  transaction log either way, so an offline run is never a lost run (`wandb sync <dir>`
+  uploads it later). Never log audio or checkpoints as wandb artifacts — free tier = 5 GB of
+  file storage, and metrics don't count against it but artifacts do; `WANDB_IGNORE_GLOBS`
+  in `.env` is the backstop.
 - Log git commit hash + full config to wandb for every run.
 - Split frozen in the manifest; never let chunks of one song cross splits (audio leakage).
 - Notebooks (`notebooks/`) = EDA only.
