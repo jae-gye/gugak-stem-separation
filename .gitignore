@@ -28,18 +28,18 @@ outputs/
 #     generated images so binaries stay out of a public repo ---
 notebooks/*.png
 
-# --- experiments/ + runs/: track the parquet metrics + notes only.
-#     Figures, rendered audio, and CSV twins are all regenerable from the tracked
-#     parquet plus the script that emitted them, so none of them belong in git.
-#     (Checkpoints are already covered by the `checkpoints/` rule above.) ---
+# --- experiments/: the ONLY experiment-output dir (a stray `runs/` was folded in
+#     2026-07-31). Track the parquet metrics + notes only — figures, rendered audio
+#     and CSV twins are all regenerable from the tracked parquet plus the script that
+#     emitted them. (Checkpoints are already covered by the `checkpoints/` rule.) ---
 experiments/**/*.png
 experiments/**/*.csv
 experiments/**/*.wav
 experiments/**/*.flac
-runs/**/*.png
-runs/**/*.csv
-runs/**/*.wav
-runs/**/*.flac
+# Exception: primary measurement artifacts with no parquet twin. The rule above
+# targets CSV/parquet duplicates; this is telemetry a launcher opted into emitting
+# (nvidia-smi sampling) and cannot be regenerated without re-running the experiment.
+!experiments/**/gpu_mem.csv
 
 # --- OS / editor ---
 .DS_Store
