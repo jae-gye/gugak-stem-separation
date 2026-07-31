@@ -73,12 +73,39 @@ wheels = [
 ]
 
 [[package]]
+name = "audiomentations"
+version = "0.7.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "librosa" },
+    { name = "numpy" },
+    { name = "scipy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ec/50/ddfb4d6c1066c784f47ee966d854a6b5897ba37db6df109866628e77af48/audiomentations-0.7.0.tar.gz", hash = "sha256:dee42a80e412ecd7eee47d3463404df4b0e35a88ded8cd4b05f81b7ff63a1bc9", size = 4802, upload-time = "2019-06-14T22:30:11.916Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c0/bc/b1d8a8875969980c9afa917bb4073e33fb64d5e5b51686fa00b6b771f9c9/audiomentations-0.7.0-py3-none-any.whl", hash = "sha256:7ca333b724516200b547981a7b97ff7ace98c84e6a1276cabae13a5f6d050605", size = 7161, upload-time = "2019-06-14T22:30:10.418Z" },
+]
+
+[[package]]
 name = "audioread"
 version = "3.1.0"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/a1/4a/874ecf9b472f998130c2b5e145dcdb9f6131e84786111489103b66772143/audioread-3.1.0.tar.gz", hash = "sha256:1c4ab2f2972764c896a8ac61ac53e261c8d29f0c6ccd652f84e18f08a4cab190", size = 20082, upload-time = "2025-10-26T19:44:13.484Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7e/16/fbe8e1e185a45042f7cd3a282def5bb8d95bb69ab9e9ef6a5368aa17e426/audioread-3.1.0-py3-none-any.whl", hash = "sha256:b30d1df6c5d3de5dcef0fb0e256f6ea17bdcf5f979408df0297d8a408e2971b4", size = 23143, upload-time = "2025-10-26T19:44:12.016Z" },
+]
+
+[[package]]
+name = "auraloss"
+version = "0.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "torch" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ec/55/2a3bbafa3e947b972c81f852c6c31cc359a21848908f2aabd35b34b532e9/auraloss-0.4.0.tar.gz", hash = "sha256:86eb3bce81aaf579d9e2df59b0cae7ab8de793902c344af72f255d53c3d5c954", size = 17640, upload-time = "2023-04-21T09:21:46.686Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a6/ab/8df927d3f0951cf67ca5973d89b35bcbda1777a4c78bf90a853d02d91285/auraloss-0.4.0-py3-none-any.whl", hash = "sha256:7ca1cfff0d04db9c1269038a1c527fc38bc4756dd33bfff115889a3461d97d37", size = 16743, upload-time = "2023-04-21T09:21:44.905Z" },
 ]
 
 [[package]]
@@ -430,6 +457,8 @@ name = "gugak-stem-separation"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "audiomentations" },
+    { name = "auraloss" },
     { name = "beartype" },
     { name = "demucs", version = "4.0.1", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
     { name = "demucs", version = "4.1.0", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
@@ -451,6 +480,7 @@ dependencies = [
     { name = "soundfile" },
     { name = "soxr" },
     { name = "torch" },
+    { name = "torch-log-wmse" },
     { name = "torchaudio" },
     { name = "tqdm" },
     { name = "wandb" },
@@ -464,6 +494,8 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "audiomentations", specifier = ">=0.7.0" },
+    { name = "auraloss", specifier = ">=0.4.0" },
     { name = "beartype", specifier = "==0.14.1" },
     { name = "demucs", specifier = ">=4.0.1" },
     { name = "einops", specifier = ">=0.8.2" },
@@ -484,6 +516,7 @@ requires-dist = [
     { name = "soundfile" },
     { name = "soxr", specifier = ">=1.1.0" },
     { name = "torch", specifier = ">=2.11.0", index = "https://download.pytorch.org/whl/cu128" },
+    { name = "torch-log-wmse", specifier = ">=0.3.1" },
     { name = "torchaudio", specifier = ">=2.11.0", index = "https://download.pytorch.org/whl/cu128" },
     { name = "tqdm" },
     { name = "wandb", specifier = ">=0.28.1" },
@@ -1891,6 +1924,20 @@ wheels = [
     { url = "https://download-r2.pytorch.org/whl/cu128/torch-2.11.0%2Bcu128-cp311-cp311-manylinux_2_28_aarch64.whl", hash = "sha256:d76f08e212285bd84c4c5a3472417f8eb4ee72e4067a604f7508dbfa2119771f", upload-time = "2026-04-27T17:36:45Z" },
     { url = "https://download-r2.pytorch.org/whl/cu128/torch-2.11.0%2Bcu128-cp311-cp311-manylinux_2_28_x86_64.whl", hash = "sha256:c9a7ca4c74fae10a58e6175b4b2cea953f9322bb6562bbf339ad6a05f52190ad", upload-time = "2026-04-27T17:37:32Z" },
     { url = "https://download-r2.pytorch.org/whl/cu128/torch-2.11.0%2Bcu128-cp311-cp311-win_amd64.whl", hash = "sha256:90ef0c2454e5296a9fb021ddd42252e4ce1abe2c0a4988a173ef90a6cded0bf5", upload-time = "2026-04-27T17:39:29Z" },
+]
+
+[[package]]
+name = "torch-log-wmse"
+version = "0.3.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "torch" },
+    { name = "torchaudio" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6d/b8/fd7817134e152727c7f81b1a12bd2c9ec127800d0cc27b1a5c66f3fdeb44/torch_log_wmse-0.3.1.tar.gz", hash = "sha256:e0dccf5522fef2d10efacab3c3f042f7fe5c87d1f7a7c99ab5d7474f1f8bc7c3", size = 43920, upload-time = "2026-01-29T23:09:54.129Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d8/0f/b1b0551f522ce05b6ddb835264bb865ac3aa8955b832e1756d179fd87af7/torch_log_wmse-0.3.1-py3-none-any.whl", hash = "sha256:c632d4607f0e743630b4b9efd3f2a9c30e3f45057d701041c2fef89e7e849c32", size = 39310, upload-time = "2026-01-29T23:09:53.181Z" },
 ]
 
 [[package]]
