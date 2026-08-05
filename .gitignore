@@ -41,6 +41,12 @@ experiments/**/*.flac
 # (nvidia-smi sampling) and cannot be regenerated without re-running the experiment.
 !experiments/**/gpu_mem.csv
 
+# --- presentation_prep/: scratch for a specific talk (slide figures + the one-off
+#     scripts that emit them). Untracked wholesale — everything here is regenerable
+#     from the tracked manifests/metrics, and slide-specific styling shouldn't
+#     accumulate in the repo. ---
+presentation_prep/
+
 # --- OS / editor ---
 .DS_Store
 
