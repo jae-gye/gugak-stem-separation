@@ -1,0 +1,104 @@
+# palette_dancheong.yaml — CANONICAL chart colour scheme for this project.
+#
+# Named after 단청, the pigment palette of Korean temple and palace woodwork.
+# Traditional dancheong pigments are deeper and more muted than a chart can
+# use, so each hue below is lifted into the readable lightness band while
+# keeping its identity.
+#
+# WHY THIS FILE EXISTS: every figure in the project — slides, papers, notebooks,
+# any parallel working session — reads its colours from here, so an instrument
+# is the same colour everywhere it appears. Do not invent colours locally.
+#
+# VALIDATION (2026-08-02, `presentation_prep/validate_palette.py`, a Python port
+# of the dataviz skill's Node validator; the port reproduces the skill's own
+# published numbers exactly):
+#   light mode, adjacent pairs (bar / line / stacked charts)
+#     lightness band ........ pass, all 8 inside OKLCH L 0.43-0.77
+#     chroma floor .......... pass, all 8 >= 0.10
+#     CVD separation ........ pass, worst adjacent dE 16.7 (deutan), target 8.0
+#     normal-vision floor ... pass, worst adjacent dE 16.7, floor 15.0
+#     contrast vs surface ... 황 gold at 2.38:1 needs a visible value label
+#
+# LIMITS — read before reusing:
+#   - Validated for LIGHT backgrounds only. No dark-mode steps derived yet.
+#   - Validated on the ADJACENT pairlist, which covers bar, line and stacked
+#     charts. Under the strict all-pairs test (scatter, bubble, choropleth,
+#     small multiples) this palette FAILS, as does every 8-colour palette. If
+#     all classes must coexist as scattered marks, add direct labels or cut
+#     the series count — never rely on colour alone there.
+#   - `slots` order is the validated order. Reordering changes which pairs sit
+#     adjacent and invalidates the CVD result above. Re-run the validator if
+#     you must change it.
+
+name: dancheong
+
+# --- the eight categorical slots, in validated order ---------------------
+# Assign in this order; never cycle, never generate a 9th hue.
+slots:
+  - {hex: "#1f9e78", pigment: 석록,   gloss: malachite green}
+  - {hex: "#2f62c4", pigment: 군청,   gloss: ultramarine}
+  - {hex: "#6f7f2a", pigment: 하엽,   gloss: lotus-leaf olive}
+  - {hex: "#0e8ca8", pigment: 청록,   gloss: teal}
+  - {hex: "#d9512c", pigment: 주홍,   gloss: vermilion}
+  - {hex: "#9c4f9b", pigment: 자주,   gloss: purple}
+  - {hex: "#d99a1e", pigment: 황,     gloss: gold}
+  - {hex: "#c23a5c", pigment: 적,     gloss: crimson}
+
+# --- reserved non-categorical colours -------------------------------------
+neutral_other: "#8a8a84"   # the "other / misc" bucket — NOT a 9th category hue
+surface: "#fcfcfb"         # light chart surface the validation assumed
+text_primary: "#0b0b0b"
+text_secondary: "#52514e"
+grid: "#d8d8d4"
+ink: "#2b2b28"             # annotation marks that must read against any hue
+
+# --- frozen entity bindings ----------------------------------------------
+# Colour follows the ENTITY, never its rank in a given chart. A chart that
+# sorts its bars differently must not repaint them.
+#
+# 기타 is the publisher's literal "other" catch-all, so it takes
+# `neutral_other` rather than a category hue — which is also what keeps this
+# 9-class scheme inside an 8-slot palette.
+stem_class_colors:
+  타악기:  "#1f9e78"
+  피리:    "#2f62c4"
+  대금:    "#6f7f2a"
+  해금:    "#0e8ca8"
+  아쟁:    "#d9512c"
+  가야금:  "#9c4f9b"
+  거문고:  "#d99a1e"
+  양금:    "#c23a5c"
+  기타:    "#8a8a84"
+
+# --- source pools: a two-colour contrast, reused wherever the ensemble pool
+#     (71955) is compared against the solo pool (71470) -----------------------
+# Validated 2026-08-02 under the STRICT all-pairs test (so it is safe in scatter
+# and overlapping-density forms, not just bars): CVD dE 24.2, normal dE 32.8,
+# both far above the floors, and both clear 3:1 on the light surface.
+pool_colors:
+  ensemble: "#2f62c4"   # 71955 — the reference distribution
+  solo:     "#d9512c"   # 71470 — the pool being matched onto it
+
+# --- dataset splits: an ORDERED one-hue ramp, not categorical hues ----------
+# train/val/test is a pipeline position, not a kind of music, so it gets a
+# desaturated slate ramp rather than stealing category hues. This keeps the
+# categorical slots meaning exactly one thing across the whole deck.
+#
+# Validated 2026-08-02 with `validate_palette.py --ordinal` (light mode):
+#   lightness monotone .... pass
+#   adjacent dL ........... pass, all gaps >= 0.06
+#   light-end contrast .... pass, #9fadbb at 2.23:1 (floor 2.0)
+#   single hue ............ pass, spread 5 deg
+split_colors:
+  train: "#3c4a5a"
+  val:   "#7d8b9c"
+  test:  "#9fadbb"
+
+genre_colors:
+  판소리:    "#1f9e78"
+  창작국악:  "#2f62c4"
+  풍류음악:  "#6f7f2a"
+  민요:      "#0e8ca8"
+  궁중음악:  "#d9512c"
+  산조:      "#9c4f9b"
+  대풍류:    "#d99a1e"
