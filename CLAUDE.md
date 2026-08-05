@@ -13,12 +13,6 @@
   anything plan-shaped; trust this file for stable facts/conventions.
   (Edit protocol — propose, don't write until confirmed → global CLAUDE.md, "Living plan".)
 
-## sym8 power-off — 2026-08-01 (routine, ~1 day)
-Building maintenance during summer break: sym8 loses power ~1 day on 2026-08-01, back same
-day or next. **Disks survive — NOT a decommission.** No backups/evacuation needed; `data/`,
-wandb offline runs, and the uv env persist. Only ask: leave things clean and resumable —
-no jobs mid-flight, work committed + pushed. Remove this block once passed.
-
 ## Environment
 - `uv` project, Python 3.11. `ffmpeg` = system dependency (server-provided), not a Python dep.
 - PyTorch cu128 via the PyTorch index (uv), pinned in `pyproject.toml`.
