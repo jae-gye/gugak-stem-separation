@@ -12,7 +12,10 @@ no directory walking, and no audio is decoded at init. Every knob lives in the
 experiment YAML's `gugak_mix` block — including RESERVED keys for features that are
 designed but deliberately not implemented yet (coherent mixes, 타악-2× multi-sampling,
 the pitch-shift pool, song-base draw units). Setting one of those raises
-NotImplementedError loudly rather than silently ignoring it.
+NotImplementedError loudly rather than silently ignoring it. The nested
+`loudness_match` sub-block (→ src/data/loudness_match.py) re-levels solo-pool stems onto
+the ensemble loudness distribution; absent or disabled, every stem keeps the stock
+random gain and the RNG stream is unchanged.
 
 Density is recomputed at init from the per-class coverage columns for the CONFIGURED
 class set — never read from the precomputed n_active_gt* columns, which count all 11
@@ -25,6 +28,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import NamedTuple
 
 import numpy as np
 import pandas as pd
@@ -32,6 +36,11 @@ import pyloudnorm
 import soundfile
 import torch
 from pedalboard import HighShelfFilter, LowShelfFilter, PeakFilter, Pedalboard
+
+try:    # imported as a package module (MSST hook: src.data.mix_dataset)
+    from src.data.loudness_match import LoudnessMatchConfig, LoudnessTargetSampler
+except ModuleNotFoundError:   # imported as a sibling (build_sumstem_eval.py runs so)
+    from loudness_match import LoudnessMatchConfig, LoudnessTargetSampler
 
 
 # --- config -----------------------------------------------------------------
@@ -57,6 +66,9 @@ class MixDatasetConfig:
     eq_mixbus_prob: float = 0.0
     eq_stem_gain_db: float = 9.0
     eq_mixbus_gain_db: float = 6.0
+    # solo-pool loudness pre-conditioning (nested block → LoudnessMatchConfig);
+    # absent/empty = disabled = every stem keeps the random-gain treatment
+    loudness_match: dict = field(default_factory=dict)
     # mixture normalization: loudnorm mixture+targets by one shared gain, then peak-guard
     target_lufs: float = -19.0
     peak_ceiling: float = 0.99
@@ -80,6 +92,24 @@ class MixDatasetConfig:
         if unknown:
             raise KeyError(f"unknown gugak_mix config keys: {sorted(unknown)}")
         return cls(**mapping)
+
+
+# --- pool entry -------------------------------------------------------------
+class SourceEntry(NamedTuple):
+    """One drawable source file: where it is, how long, when it plays, where it's from.
+
+    `dataset`, `source_lufs` and `source_channels` exist for loudness matching — the
+    treatment applies to solo-pool stems only, and needs the clip's measured level plus
+    how it is presented (a mono file is duplicated to stereo on draw, which reads 3 dB
+    louder than the file scan's 1-channel measurement) to compute its offset.
+    `source_lufs` is nan whenever matching is off or the file has no measurement.
+    """
+    out_path: str
+    out_frames: int
+    segments: np.ndarray
+    dataset: str
+    source_lufs: float
+    source_channels: int
 
 
 # --- EQ augmentation (reimplemented from the Embracing Cacophony recipe) -----
@@ -141,6 +171,13 @@ class GugakMixDataset(torch.utils.data.Dataset):
         self.chunk_frames = int(round(cfg.segment_seconds * cfg.sample_rate))
         self.meter = pyloudnorm.Meter(cfg.sample_rate)
 
+        # solo-pool loudness matching: built before the pool, which asks it for levels
+        self.loudness_match_cfg = LoudnessMatchConfig.from_mapping(cfg.loudness_match)
+        self.loudness_sampler = (
+            LoudnessTargetSampler(self.loudness_match_cfg, self.root, list(cfg.classes),
+                                  cfg.segment_seconds)
+            if self.loudness_match_cfg.enabled else None)
+
         self.pool = self._build_source_pool()
         self.density_values, self.density_probs = self._build_density_histogram()
 
@@ -183,7 +220,11 @@ class GugakMixDataset(torch.utils.data.Dataset):
                 file_segments = segments_by_file.get(row.file_id)
                 if file_segments is None or len(file_segments) == 0:
                     continue    # fully-silent file: nothing to draw (QC says none exist)
-                entries.append((row.out_path, int(row.out_frames), file_segments))
+                source_lufs = (self.loudness_sampler.source_loudness(row.file_id)
+                               if self.loudness_sampler is not None else math.nan)
+                entries.append(SourceEntry(row.out_path, int(row.out_frames),
+                                           file_segments, row.dataset, source_lufs,
+                                           int(row.out_channels)))
             pool[class_name] = entries
 
         missing = [c for c in self.cfg.classes if not pool.get(c)]
@@ -223,7 +264,8 @@ class GugakMixDataset(torch.utils.data.Dataset):
         return values, counts / counts.sum()
 
     # --- per-item sampling (audio) ---
-    def _draw_excerpt(self, rng: np.random.Generator, class_name: str) -> np.ndarray:
+    def _draw_excerpt(self, rng: np.random.Generator,
+                      class_name: str) -> tuple[np.ndarray, SourceEntry]:
         """One activity-aware excerpt of a random source of `class_name` → (2, chunk).
 
         A random active segment is chosen duration-weighted, an anchor point drawn
@@ -231,10 +273,11 @@ class GugakMixDataset(torch.utils.data.Dataset):
         the anchor — so every excerpt overlaps real activity, but silence around short
         segments stays in (silence is a valid signal when deliberate). Sources shorter
         than the window are zero-padded at the tail; mono sources are center-duplicated
-        to stereo (never naive-summed — anti-phase rule).
+        to stereo (never naive-summed — anti-phase rule). The entry it came from is
+        returned alongside, since the gain treatment depends on which pool that is.
         """
-        out_path, total_frames, segments = self.pool[class_name][
-            rng.integers(len(self.pool[class_name]))]
+        entry = self.pool[class_name][rng.integers(len(self.pool[class_name]))]
+        out_path, total_frames, segments = entry.out_path, entry.out_frames, entry.segments
 
         durations = segments[:, 1] - segments[:, 0]
         segment = segments[rng.choice(len(segments), p=durations / durations.sum())]
@@ -252,12 +295,56 @@ class GugakMixDataset(torch.utils.data.Dataset):
         audio = audio.T                                        # -> (channels, frames)
         if audio.shape[0] == 1:
             audio = np.repeat(audio, 2, axis=0)                # centered mono
-        return audio
+        return audio, entry
 
-    def _augment_stem(self, rng: np.random.Generator, audio: np.ndarray) -> np.ndarray:
-        """Live per-stem chain: random gain · L/R swap · (optional) EQ."""
+    def _draw_stem_gain(self, rng: np.random.Generator, class_name: str,
+                        entry: SourceEntry) -> float:
+        """Linear gain for one stem: loudness matching and random gain, COMPOSED.
+
+        Two different jobs, applied in order. Matching is pool pre-conditioning: a stem
+        from a matched pool (the 71470 solo clips) is first moved onto a level drawn from
+        the class's ensemble distribution, so the two pools' level distributions look
+        alike. The random gain is then augmentation, applied to EVERY stem regardless of
+        pool. Replacing rather than composing — the earlier design — would hand the
+        augmentation to ensemble stems only, and since the configured range is not
+        centred (0.25–1.25 linear averages about −3.2 dB) that alone would push ensemble
+        stems systematically quieter: a fresh pool-correlated loudness cue of exactly the
+        kind matching exists to remove.
+
+        The range deliberately stays 0.25–1.25 rather than being re-centred, so exp002
+        differs from exp001 only in the solo pool and the comparison stays single-
+        variable. The asymmetry is harmless once every stem sees it equally.
+
+        With matching disabled the first branch is skipped entirely and no extra
+        randomness is consumed, so the RNG stream is identical to a stock run.
+
+        Args:
+            rng: the item's Generator.
+            class_name: the stem class being drawn.
+            entry: the pool entry the excerpt came from (its pool and measured level).
+        """
+        matched_gain = 1.0
+        if (self.loudness_sampler is not None
+                and entry.dataset in self.loudness_match_cfg.matched_datasets):
+            drawn = self.loudness_sampler.draw_gain(rng, class_name, entry.dataset,
+                                                    entry.source_lufs,
+                                                    entry.source_channels)
+            if drawn is not None:
+                matched_gain = drawn
+        return matched_gain * float(rng.uniform(self.cfg.gain_min, self.cfg.gain_max))
+
+    def _augment_stem(self, rng: np.random.Generator, audio: np.ndarray,
+                      class_name: str, entry: SourceEntry) -> np.ndarray:
+        """Live per-stem chain: gain (random or loudness-matched) · L/R swap · EQ.
+
+        Args:
+            rng: the item's Generator.
+            audio: the drawn excerpt, (2, chunk).
+            class_name: the stem class being drawn.
+            entry: the pool entry the excerpt came from.
+        """
         # np.float32 cast: a float64 scalar would silently promote the whole chain
-        audio = audio * np.float32(rng.uniform(self.cfg.gain_min, self.cfg.gain_max))
+        audio = audio * np.float32(self._draw_stem_gain(rng, class_name, entry))
         if rng.random() < self.cfg.channel_swap_prob:
             audio = audio[::-1].copy()
         if rng.random() < self.cfg.eq_stem_prob:
@@ -292,8 +379,9 @@ class GugakMixDataset(torch.utils.data.Dataset):
 
         stems = np.zeros((len(self.cfg.classes), 2, self.chunk_frames), dtype=np.float32)
         for slot in drawn:
-            excerpt = self._draw_excerpt(rng, self.cfg.classes[slot])
-            stems[slot] = self._augment_stem(rng, excerpt)
+            class_name = self.cfg.classes[slot]
+            excerpt, entry = self._draw_excerpt(rng, class_name)
+            stems[slot] = self._augment_stem(rng, excerpt, class_name, entry)
 
         if rng.random() < self.cfg.eq_mixbus_prob:
             # one shared EQ over every stem: linear, so the mixture hears the same EQ
