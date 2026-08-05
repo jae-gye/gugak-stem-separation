@@ -1,0 +1,21 @@
+d5eadd1208ccc829e98a0891acd80e0a3f2e1f6d
+ M .gitignore
+ M experiments/exp001_260728_htdemucs_9stem/git_commit.txt
+ M src/data/mix_dataset.py
+?? configs/exp001.2_htdemucs_9stem_resumed.yaml
+?? configs/palette_dancheong.yaml
+?? experiments/260731_chunk_loudness/
+?? experiments/exp001.1_260730_bf16_probe/BF16_ADOPTION.md
+?? experiments/exp001.2_260802_htdemucs_9stem_resumed/
+?? experiments/exp001_260728_htdemucs_9stem/RESUME.md
+?? experiments/exp001_260728_htdemucs_9stem/launch_exp001_continue.sh
+?? experiments/exp001_260728_htdemucs_9stem/metrics/
+?? scripts/export_exp001_metrics.py
+?? scripts/export_presentation_results.py
+?? scripts/fig_model_diagram.py
+?? scripts/render_illustrative_audio.py
+?? scripts/render_presentation_demos.py
+?? scripts/verify_loudness_match.py
+?? src/data/chunk_loudness_scan.py
+?? src/data/loudness_match.py
+8dbc33e61a0772d2b1e30a7020162f3823a5837d

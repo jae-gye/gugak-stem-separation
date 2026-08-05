@@ -1,0 +1,187 @@
+# exp001.2_htdemucs_9stem_resumed.yaml — exp001 continued after the shutdown pause.
+# HTDemucs fine-tune on incoherent gugak mixes, 9 classes, 71955-only.
+# One experiment = one config = one wandb run (exp001.2_260802_htdemucs_9stem_resumed).
+#
+# Resumes the exp001 best checkpoint (epoch 33, val SI-SDR +1.0409, 85k optimizer steps)
+# with optimizer + scheduler + epoch counter restored, so training continues at epoch 34
+# rather than restarting. Outputs land in experiments/exp001.2_260802_htdemucs_9stem_resumed/,
+# never in the exp001 folder (that one is frozen — its artifacts back the presentation).
+#
+# ONLY DIFFERENCE FROM exp001: numerics. exp001 paused running pure fp32; this run adopts
+# bf16 autocast on the strength of the exp001.1 probe (→ docs/exp001.1_bf16_probe_report.md
+# and experiments/exp001.1_260730_bf16_probe/BF16_ADOPTION.md). Everything else — data
+# pipeline, class scheme, batch, LR schedule, loss — is byte-identical to exp001.
+#
+# Structure: MSST sections (audio/training/augmentations/inference/model/htdemucs)
+# consumed by external/msst train.py, + our own blocks (gugak_mix = the incoherent-mix
+# dataloader, sumstem_eval = the Σstem val renderer). Loss/metrics are CLI flags:
+# --loss l1_loss --metrics si_sdr --metric_for_scheduler si_sdr (→ launch script).
+
+# --- MSST: audio geometry ---
+audio:
+  chunk_size: 441000        # 10 s × 44100 — the checkpoint's native training length
+  min_mean_abs: 0.0         # unused: our dataset does activity-aware draws itself
+  hop_length: 1024
+
+# --- MSST: training ---
+training:
+  run_name: exp001.2_260802_htdemucs_9stem_resumed
+  custom_dataset: "src.data.mix_dataset:create_msst_dataset"   # fork hook → our loader
+  batch_size: 8                     # physical, per spec (× accum 4 → effective 32)
+  gradient_accumulation_steps: 4
+  grad_clip: 5.0                    # HTDemucs ft recipe (L2 norm)
+  segment: 10
+  shift: 1
+  samplerate: 44100
+  channels: 2
+  normalize: false                  # normalization owned by the dataset (−19 LUFS tuple)
+  instruments: [가야금, 거문고, 기타, 대금, 아쟁, 양금, 타악기, 피리, 해금]  # = gugak_mix.classes
+  target_instrument: null
+  num_epochs: 60                    # 60 × 2,500 optimizer steps = 150k ceiling (spec)
+  num_steps: 10000                  # loader iterations per "epoch" = 2,500 OPTIMIZER
+                                    # steps at accum 4 → eval every 2,500 steps (spec)
+  optimizer: adam
+  lr: 5.0e-05                       # nominal only — the resumed optimizer state carries
+                                    # 2.5e-5 (ReduceLROnPlateau halved it during exp001)
+                                    # and --load_optimizer makes that win over this value
+  patience: 5                       # ReduceLROnPlateau (scheduler, NOT early stop)
+  reduce_factor: 0.5
+  q: 0.95
+  coarse_loss_clip: true
+  ema_momentum: 0                   # OFF — MSST single-GPU path never evals/saves EMA
+                                    # weights (dead overhead) → DEVIATION, see report
+  other_fix: false
+  use_amp: true                     # autocast ON — adopted 2026-08-02 on the exp001.1
+  amp_dtype: bfloat16               # probe's evidence: bf16 carries fp32's exponent range
+                                    # in 16 bits, so the fp16 overflow that caused two
+                                    # cliffs is structurally impossible; the probe logged
+                                    # 0 non-finite steps in 40,000 and beat the fp32 arm
+                                    # at all four matched step counts. GradScaler is
+                                    # auto-disabled for bf16; STFT/iSTFT stay fp32-pinned
+                                    # in the model. Buys back the ~30% fp32 slowdown.
+  inference_amp_dtype: float32      # eval stays pure fp32 — same measuring instrument as
+                                    # exp001, so val curves remain directly comparable
+
+# --- MSST: stock augmentations OFF — all augs live in gugak_mix ---
+augmentations:
+  enable: false
+
+# --- MSST: eval-time chunked inference ---
+inference:
+  num_overlap: 2            # step = chunk/2 → 50% overlap (MSST integer semantics;
+                            # spec's 25% is not expressible — deviation, quality ≥ spec)
+  batch_size: 8
+
+# --- MSST: model ---
+model: htdemucs
+
+gugak_mix:
+  # class scheme: publisher's 9, pitched percussion (편종·편경·방향) quarantined —
+  # excluded from training entirely, NOT folded back into 타악기. Order = output slots.
+  classes: [가야금, 거문고, 기타, 대금, 아쟁, 양금, 타악기, 피리, 해금]
+
+  # source pool: ensemble only — 71470 solo pool held back (future ablation)
+  datasets: ["71955"]
+  split: train
+
+  # excerpt geometry: the checkpoint's native training length
+  segment_seconds: 10.0
+  sample_rate: 44100
+
+  # density: n ~ measured audible-편성 distribution (recomputed for the 9 classes
+  # from per-class coverage; n=0 dropped, n=1 kept). Window matches the segment.
+  density_chunk_len_s: 10.0
+  density_coverage_threshold: 0.25
+
+  # live augmentations. EQ is BUILT but OFF for exp001 (decision 2026-07-28) —
+  # future runs flip the two probabilities, no code change.
+  gain_min: 0.25
+  gain_max: 1.25
+  channel_swap_prob: 0.5
+  eq_stem_prob: 0.0
+  eq_mixbus_prob: 0.0
+
+  # mixture normalization: loudnorm mixture+targets by one shared gain to the
+  # dataset-native loudness, then peak-guard
+  target_lufs: -19.0
+  peak_ceiling: 0.99
+
+  seed: 42
+
+  # --- reserved knobs (designed, not implemented — enabling raises) ---
+  coherent_mix_prob: 0.0        # coherent same-song draws + 판소리 trim rule
+  multi_sample: {}              # 타악-2× seam, e.g. {타악기: 2}
+  pitch_pool_manifest: null     # (source × semitone) pool table, post-exp001
+  draw_unit: file               # 'song_base' = summed same-base stems, reserved
+
+# Σstem eval variant (val/test), rendered by src/data/build_sumstem_eval.py in the
+# MSST-native layout (<song>/mixture.flac + <song>/<class>.flac). Classes come from
+# gugak_mix.classes above — train and eval cannot drift. Lives on dataset NVMe.
+sumstem_eval:
+  out_root: data/gugak_ensemble_71955/sumstem_9stem
+  extension: flac
+  subtype: PCM_24
+
+# --- MSST: HTDemucs architecture — copied VERBATIM from the msst musdb18 template
+# (configs/config_musdb18_htdemucs.yaml @ fork 65266a2). Must match the official
+# pretrained checkpoint's hyperparameters or trunk weights won't transfer. ---
+htdemucs:
+  channels: 48
+  channels_time:
+  growth: 2
+  num_subbands: 1
+  nfft: 4096
+  wiener_iters: 0
+  end_iters: 0
+  wiener_residual: false
+  cac: true
+  depth: 4
+  rewrite: true
+  multi_freqs: []
+  multi_freqs_depth: 3
+  freq_emb: 0.2
+  emb_scale: 10
+  emb_smooth: true
+  kernel_size: 8
+  stride: 4
+  time_stride: 2
+  context: 1
+  context_enc: 0
+  norm_starts: 4
+  norm_groups: 4
+  dconv_mode: 3
+  dconv_depth: 2
+  dconv_comp: 8
+  dconv_init: 1e-3
+  bottom_channels: 512
+  t_layers: 5
+  t_hidden_scale: 4.0
+  t_heads: 8
+  t_dropout: 0.0
+  t_layer_scale: True
+  t_gelu: True
+  t_emb: sin
+  t_max_positions: 10000
+  t_max_period: 10000.0
+  t_weight_pos_embed: 1.0
+  t_cape_mean_normalize: True
+  t_cape_augment: True
+  t_cape_glob_loc_scale: [5000.0, 1.0, 1.4]
+  t_sin_random_shift: 0
+  t_norm_in: True
+  t_norm_in_group: False
+  t_group_norm: False
+  t_norm_first: True
+  t_norm_out: True
+  t_weight_decay: 0.0
+  t_lr:
+  t_sparse_self_attn: False
+  t_sparse_cross_attn: False
+  t_mask_type: diag
+  t_mask_random_seed: 42
+  t_sparse_attn_window: 400
+  t_global_window: 100
+  t_sparsity: 0.95
+  t_auto_sparsity: False
+  t_cross_first: False
+  rescale: 0.1
